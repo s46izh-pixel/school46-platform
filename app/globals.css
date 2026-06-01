@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --ink: #151619;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101114;
+  --ink: #f5f7fb;
+}
+
+:root[data-design="sky"] {
+  --bg: #eef7ff;
+  --ink: #102033;
+}
+
+:root[data-design="mint"] {
+  --bg: #eefbf5;
+  --ink: #10251d;
+}
+
+:root[data-design="sakura"] {
+  --bg: #fff3f7;
+  --ink: #2b1720;
+}
+
+:root[data-design="graphite"] {
+  --bg: #eceff3;
+  --ink: #111318;
+}
+
+:root[data-design="aurora"] {
+  --bg: #f3f5ff;
+  --ink: #151629;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 80% 10%, rgba(10, 132, 255, 0.12), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0%, var(--bg) 46%, #ffffff 100%);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.glass {
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 80% 10%, rgba(10, 132, 255, 0.18), transparent 30rem),
+    linear-gradient(180deg, #16181d 0%, #101114 50%, #17191e 100%);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .bg-white {
+  background-color: #181b20 !important;
+}
+
+:root[data-theme="dark"] .text-ink {
+  color: #f5f7fb !important;
+}
+
+:root[data-theme="dark"] .border-line {
+  border-color: #2b3038 !important;
+}
+
+:root[data-theme="dark"] .bg-mist {
+  background-color: #22262d !important;
+}
+
+:root[data-rtx="true"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(10, 132, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(33, 166, 122, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  filter: drop-shadow(0 0 24px rgba(10, 132, 255, 0.25));
+  pointer-events: none;
+}
+
+:root[data-rtx="true"] .glass {
+  box-shadow: 0 24px 80px rgba(10, 132, 255, 0.16), 0 0 40px rgba(33, 166, 122, 0.10);
+  backdrop-filter: blur(30px) saturate(1.25);
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline-color: #0a84ff;
+}

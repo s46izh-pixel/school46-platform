@@ -9,12 +9,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#151619",
-        mist: "#f6f7f9",
-        line: "#e3e6ec",
-        apple: "#0a84ff",
-        mint: "#21a67a",
-        coral: "#ff6b57"
+        ink: "var(--ink)",
+        mist: "var(--mist)",
+        line: "var(--line)",
+        apple: "var(--accent)",
+        mint: "var(--mint)",
+        coral: "var(--coral)"
       },
       boxShadow: {
         soft: "0 18px 60px rgba(15, 23, 42, 0.10)",

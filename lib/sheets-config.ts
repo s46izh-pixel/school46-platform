@@ -6,11 +6,11 @@ export const sheetsConfig = {
     },
     events: {
       spreadsheetId: process.env.GOOGLE_EVENTS_SHEET_ID ?? "1lSH-KBbhocfYSadrJUQUyJvo2Xlf7aj72VXsv1WYiL0",
-      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "1"
+      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "Основной"
     },
     actions: {
       spreadsheetId: process.env.GOOGLE_EVENTS_SHEET_ID ?? "1lSH-KBbhocfYSadrJUQUyJvo2Xlf7aj72VXsv1WYiL0",
-      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "1"
+      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "Основной"
     },
     applications: {
       spreadsheetId: process.env.GOOGLE_APPLICATIONS_SHEET_ID ?? process.env.GOOGLE_SHEETS_ID ?? "",

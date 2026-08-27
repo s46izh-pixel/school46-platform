@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { School } from "lucide-react";
 import { TopControls } from "./top-controls";
+import { WelcomePersonalizer } from "./welcome-personalizer";
 
 const nav = [
   { href: "/", label: "Главная" },
@@ -36,6 +37,7 @@ export function Header() {
         </nav>
         <TopControls />
       </div>
+      <WelcomePersonalizer />
     </header>
   );
 }

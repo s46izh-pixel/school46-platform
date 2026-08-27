@@ -1,8 +1,9 @@
 "use client";
 
 import { classes, teacherNames } from "@/lib/mock-data";
+import { uniqueClasses } from "@/lib/class-utils";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
-import type { UserPreferences } from "@/lib/types";
+import type { ScheduleLesson, UserPreferences } from "@/lib/types";
 import { Moon, Star, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SelectField } from "./selectors";
@@ -11,18 +12,31 @@ const sections = ["Новости", "Расписание", "Рейтинг", "�
 
 export function UserPreferencesPanel() {
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
+  const [mounted, setMounted] = useState(false);
+  const [classOptions, setClassOptions] = useState(() => uniqueClasses(classes, classes));
 
   useEffect(() => {
+    setMounted(true);
     const saved = localStorage.getItem(preferencesStorageKey);
     if (saved) setPrefs({ ...defaultPreferences, ...JSON.parse(saved) });
+    fetch("/api/schedule", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { lessons?: ScheduleLesson[] }) => {
+        const nextOptions = uniqueClasses(data.lessons?.map((lesson) => lesson.className) ?? [], classes);
+        setClassOptions(nextOptions);
+      })
+      .catch(() => setClassOptions(uniqueClasses(classes, classes)));
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     localStorage.setItem(preferencesStorageKey, JSON.stringify(prefs));
+    localStorage.setItem("school46.class", prefs.selectedClass);
     document.documentElement.dataset.theme = prefs.theme;
     document.documentElement.dataset.design = prefs.design;
-    document.documentElement.dataset.rtx = String(prefs.rtx4k);
-  }, [prefs]);
+    document.documentElement.removeAttribute("data-rtx");
+    window.dispatchEvent(new CustomEvent("school46.preferences-updated", { detail: prefs }));
+  }, [mounted, prefs]);
 
   function update(value: Partial<UserPreferences>) {
     setPrefs((current) => ({ ...current, ...value }));
@@ -54,7 +68,7 @@ export function UserPreferencesPanel() {
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label="Класс" value={prefs.selectedClass} options={classes} onChange={(value) => update({ selectedClass: value })} />
+        <SelectField label="Класс" value={prefs.selectedClass} options={classOptions} onChange={(value) => update({ selectedClass: value, selectedClasses: [value], groupName: value })} />
         <SelectField label="Педагог" value={prefs.selectedTeacher} options={teacherNames} onChange={(value) => update({ selectedTeacher: value })} />
       </div>
       <div className="grid gap-2">

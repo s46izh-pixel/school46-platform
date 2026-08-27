@@ -206,12 +206,36 @@ export const lessons: ScheduleLesson[] = days.flatMap((day, dayIndex) =>
 );
 
 export const bells: BellSchedule[] = [
-  { lesson: 1, start: "08:30", end: "09:10", break: "10 мин" },
-  { lesson: 2, start: "09:20", end: "10:00", break: "15 мин" },
-  { lesson: 3, start: "10:15", end: "10:55", break: "15 мин" },
-  { lesson: 4, start: "11:10", end: "11:50", break: "10 мин" },
-  { lesson: 5, start: "12:00", end: "12:40", break: "10 мин" },
-  { lesson: 6, start: "12:50", end: "13:30", break: "10 мин" }
+  { dayGroup: "monday", shift: 1, lesson: 1, start: "09.00", end: "9.40", break: "10 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 2, start: "09.50", end: "10.30", break: "20 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 3, start: "10.50", end: "11.30", break: "20 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 4, start: "11.50", end: "12.30", break: "20 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 5, start: "12.50", end: "13.30", break: "10 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 6, start: "13.40", end: "14.20", break: "20 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 7, start: "14.40", end: "15.20", break: "20 мин" },
+  { dayGroup: "monday", shift: 1, lesson: 8, start: "15.40", end: "16.20", break: "" },
+  { dayGroup: "monday", shift: 2, lesson: 1, start: "12.50", end: "13.30", break: "10 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 2, start: "13.40", end: "14.20", break: "20 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 3, start: "14.40", end: "15.20", break: "20 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 4, start: "15.40", end: "16.20", break: "10 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 5, start: "16.30", end: "17.10", break: "10 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 6, start: "17.20", end: "18.00", break: "10 мин" },
+  { dayGroup: "monday", shift: 2, lesson: 7, start: "18.10", end: "18.50", break: "" },
+  { dayGroup: "regular", shift: 1, lesson: 1, start: "8.00", end: "8.40", break: "10 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 2, start: "8.50", end: "9.30", break: "20 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 3, start: "9.50", end: "10.30", break: "20 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 4, start: "10.50", end: "11.30", break: "20 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 5, start: "11.50", end: "12.30", break: "10 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 6, start: "12.40", end: "13.20", break: "10 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 7, start: "13.30", end: "14.10", break: "20 мин" },
+  { dayGroup: "regular", shift: 1, lesson: 8, start: "14.30", end: "15.10", break: "" },
+  { dayGroup: "regular", shift: 2, lesson: 1, start: "12.40", end: "13.20", break: "10 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 2, start: "13.30", end: "14.10", break: "20 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 3, start: "14.30", end: "15.10", break: "20 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 4, start: "15.30", end: "16.10", break: "10 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 5, start: "16.20", end: "17.00", break: "10 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 6, start: "17.10", end: "17.50", break: "10 мин" },
+  { dayGroup: "regular", shift: 2, lesson: 7, start: "18.00", end: "18.40", break: "" }
 ];
 
 export const applications: ApplicationItem[] = [

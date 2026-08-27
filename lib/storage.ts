@@ -1,7 +1,11 @@
 import { UserPreferences } from "./types";
 
 export const defaultPreferences: UserPreferences = {
+  role: "student",
+  onboardingDone: false,
+  onboardingVersion: 0,
   selectedClass: "8А",
+  selectedClasses: ["8А"],
   selectedTeacher: "Иванова Е. А.",
   theme: "light",
   design: "silver",

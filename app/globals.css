@@ -6,37 +6,109 @@
   color-scheme: light;
   --bg: #f6f7f9;
   --ink: #151619;
+  --mist: #f6f7f9;
+  --line: #e3e6ec;
+  --accent: #0a84ff;
+  --accent-soft: #eaf4ff;
+  --mint: #21a67a;
+  --coral: #ff6b57;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #101114;
   --ink: #f5f7fb;
+  --mist: #22262d;
+  --line: #2b3038;
+  --accent-soft: #10243f;
+}
+
+:root[data-design="classic"] {
+  --bg: #f5f2ec;
+  --ink: #201a16;
+  --mist: #f2ede5;
+  --line: #ded5ca;
+  --accent: #8b5e34;
+  --accent-soft: #f4eadf;
+  --mint: #4e8b69;
+  --coral: #bf5f4d;
 }
 
 :root[data-design="sky"] {
   --bg: #eef7ff;
   --ink: #102033;
+  --mist: #e7f3ff;
+  --line: #c8def5;
+  --accent: #007aff;
+  --accent-soft: #e5f2ff;
+  --mint: #159f8d;
+  --coral: #ff6b57;
 }
 
 :root[data-design="mint"] {
   --bg: #eefbf5;
   --ink: #10251d;
+  --mist: #e6f7ef;
+  --line: #bee5d3;
+  --accent: #14935f;
+  --accent-soft: #e6f7ef;
+  --mint: #0f8c60;
+  --coral: #ef6a5a;
 }
 
 :root[data-design="sakura"] {
   --bg: #fff3f7;
   --ink: #2b1720;
+  --mist: #fff0f5;
+  --line: #f2cad8;
+  --accent: #d94a7a;
+  --accent-soft: #ffe8f0;
+  --mint: #2b9b7f;
+  --coral: #e85c66;
 }
 
 :root[data-design="graphite"] {
   --bg: #eceff3;
   --ink: #111318;
+  --mist: #eef1f5;
+  --line: #cfd5de;
+  --accent: #3b4556;
+  --accent-soft: #edf0f4;
+  --mint: #238c76;
+  --coral: #d65d52;
 }
 
 :root[data-design="aurora"] {
   --bg: #f3f5ff;
   --ink: #151629;
+  --mist: #eef1ff;
+  --line: #d4daf8;
+  --accent: #5b5bd6;
+  --accent-soft: #ececff;
+  --mint: #209f96;
+  --coral: #ff6b88;
+}
+
+:root[data-design="school"] {
+  --bg: #f7fbff;
+  --ink: #17212f;
+  --mist: #edf7ff;
+  --line: #cfe4f5;
+  --accent: #0a84ff;
+  --accent-soft: #e6f2ff;
+  --mint: #1b9b72;
+  --coral: #ff6f59;
+}
+
+:root[data-design="space"] {
+  --bg: #f4f0ff;
+  --ink: #17142a;
+  --mist: #eee8ff;
+  --line: #d9cef8;
+  --accent: #6652d9;
+  --accent-soft: #ece7ff;
+  --mint: #159f9b;
+  --coral: #ff678f;
 }
 
 * {
@@ -51,11 +123,34 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 80% 10%, rgba(10, 132, 255, 0.12), transparent 30rem),
+    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 30rem),
     linear-gradient(180deg, #ffffff 0%, var(--bg) 46%, #ffffff 100%);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   transition: background-color 220ms ease, color 220ms ease;
+}
+
+:root[data-design="school"] body::after,
+:root[data-design="space"] body::after {
+  position: fixed;
+  inset: auto 2rem 2rem auto;
+  z-index: -1;
+  width: min(24rem, 70vw);
+  color: color-mix(in srgb, var(--accent) 20%, transparent);
+  font-size: 3rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  opacity: 0.36;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+:root[data-design="school"] body::after {
+  content: "✏️  📚  ⭐\A🎒  🧠  📝\A🏫  ✅  💡";
+}
+
+:root[data-design="space"] body::after {
+  content: "🚀  ✨  🌙\A🪐  ⭐  🔭\A🌌  💫  🛰️";
 }
 
 button,
@@ -74,7 +169,7 @@ textarea {
 
 :root[data-theme="dark"] body {
   background:
-    radial-gradient(circle at 80% 10%, rgba(10, 132, 255, 0.18), transparent 30rem),
+    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 30rem),
     linear-gradient(180deg, #16181d 0%, #101114 50%, #17191e 100%);
   color: var(--ink);
 }
@@ -92,25 +187,12 @@ textarea {
 }
 
 :root[data-theme="dark"] .bg-mist {
-  background-color: #22262d !important;
+  background-color: var(--mist) !important;
 }
 
-:root[data-rtx="true"] body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(rgba(10, 132, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(33, 166, 122, 0.07) 1px, transparent 1px);
-  background-size: 44px 44px;
-  filter: drop-shadow(0 0 24px rgba(10, 132, 255, 0.25));
-  pointer-events: none;
-}
-
-:root[data-rtx="true"] .glass {
-  box-shadow: 0 24px 80px rgba(10, 132, 255, 0.16), 0 0 40px rgba(33, 166, 122, 0.10);
-  backdrop-filter: blur(30px) saturate(1.25);
+:root[data-theme="dark"] .settings-panel {
+  border-color: #2b3038 !important;
+  background-color: rgba(24, 27, 32, 0.96) !important;
 }
 
 .focus-ring {
@@ -119,5 +201,5 @@ textarea {
 }
 
 .focus-ring:focus-visible {
-  outline-color: #0a84ff;
+  outline-color: var(--accent);
 }

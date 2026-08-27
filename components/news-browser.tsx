@@ -1,9 +1,11 @@
 "use client";
 
+import { getAdminStore } from "@/lib/admin-store-client";
 import { categories, classes } from "@/lib/mock-data";
+import type { NewsVisibility } from "@/lib/news-visibility";
 import { NewsItem } from "@/lib/types";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NewsCard } from "./news-card";
 import { SelectField } from "./selectors";
 
@@ -12,21 +14,49 @@ export function NewsBrowser({ items }: { items: NewsItem[] }) {
   const [classFilter, setClassFilter] = useState("Все");
   const [categoryFilter, setCategoryFilter] = useState("Все");
   const [tagFilter, setTagFilter] = useState("Все");
-  const tags = Array.from(new Set(items.flatMap((item) => item.tags)));
+  const [visibility, setVisibility] = useState<NewsVisibility>({});
+  const [overrides, setOverrides] = useState<Record<string, NewsItem>>({});
+  const displayItems = useMemo(() => items.map((item) => ({ ...item, ...overrides[item.slug] })), [items, overrides]);
+  const tags = Array.from(new Set(displayItems.flatMap((item) => item.tags)));
+
+  useEffect(() => {
+    function loadNewsSettings() {
+      getAdminStore()
+        .then((store) => {
+          setVisibility(store.newsVisibility as NewsVisibility);
+          setOverrides(store.newsOverrides as Record<string, NewsItem>);
+        })
+        .catch(() => {
+          setVisibility({});
+          setOverrides({});
+        });
+    }
+
+    loadNewsSettings();
+    window.addEventListener("storage", loadNewsSettings);
+    window.addEventListener("school46.news-visibility-updated", loadNewsSettings);
+    window.addEventListener("school46.news-updated", loadNewsSettings);
+    return () => {
+      window.removeEventListener("storage", loadNewsSettings);
+      window.removeEventListener("school46.news-visibility-updated", loadNewsSettings);
+      window.removeEventListener("school46.news-updated", loadNewsSettings);
+    };
+  }, []);
 
   const filtered = useMemo(
     () =>
-      items.filter((item) => {
+      displayItems.filter((item) => {
         const text = `${item.title} ${item.text}`.toLowerCase();
         return (
           item.status === "published" &&
+          visibility[item.slug] !== false &&
           text.includes(query.toLowerCase()) &&
           (classFilter === "Все" || item.className === classFilter || item.className === "Все") &&
           (categoryFilter === "Все" || item.category === categoryFilter) &&
           (tagFilter === "Все" || item.tags.includes(tagFilter))
         );
       }),
-    [categoryFilter, classFilter, items, query, tagFilter]
+    [categoryFilter, classFilter, displayItems, query, tagFilter, visibility]
   );
 
   return (

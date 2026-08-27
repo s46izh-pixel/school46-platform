@@ -51,6 +51,7 @@ export type EventItem = {
   title: string;
   type: "event" | "contest" | "action";
   category: string;
+  classCategory?: string;
   place: string;
   description: string;
   participants: string;
@@ -106,13 +107,28 @@ export type RatingSheet = {
 export type ScheduleLesson = {
   className: string;
   day: string;
+  time?: string;
   number: number;
   subject: string;
   teacher: string;
   room: string;
 };
 
+export type ScheduleChange = {
+  id: string;
+  className: string;
+  day: string;
+  time: string;
+  number: number;
+  subject: string;
+  teacher: string;
+  room: string;
+  note: string;
+};
+
 export type BellSchedule = {
+  dayGroup?: "monday" | "regular";
+  shift?: 1 | 2;
   lesson: number;
   start: string;
   end: string;
@@ -139,10 +155,14 @@ export type ApplicationItem = {
 };
 
 export type UserPreferences = {
+  role: "student" | "teacher" | "parent";
+  onboardingDone: boolean;
+  onboardingVersion: number;
   selectedClass: string;
+  selectedClasses?: string[];
   selectedTeacher: string;
   theme: "light" | "dark";
-  design: "silver" | "classic" | "sky" | "mint" | "sakura" | "graphite" | "aurora";
+  design: "silver" | "classic" | "sky" | "mint" | "sakura" | "graphite" | "aurora" | "school" | "space";
   userName: string;
   groupName: string;
   rtx4k: boolean;

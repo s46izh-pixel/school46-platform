@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "cross-env NEXT_DIST_DIR=.next-dev next dev",
+    "build": "cross-env NEXT_DIST_DIR=.next-build next build",
+    "start": "cross-env NEXT_DIST_DIR=.next-build next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "cross-env": "7.0.3",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",

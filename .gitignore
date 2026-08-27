@@ -2,5 +2,7 @@ node_modules/
 .next/ 
 .next-build/
 .next-dev/
+.open-next/
+dist/
 .env 
 .env.local 

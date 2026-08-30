@@ -31,7 +31,8 @@ export function HomeGreeting() {
 
   const name = prefs.userName.trim();
   const greeting = name ? `Здравствуйте, ${name}` : "Школа №46 онлайн";
-  const classText = prefs.selectedClass ? `Ваш класс: ${prefs.selectedClass}` : "Цифровая платформа";
+  const selectedClasses = prefs.role === "teacher" && prefs.selectedClasses?.length ? prefs.selectedClasses : [prefs.selectedClass];
+  const classText = selectedClasses.length ? `Ваши классы: ${formatClassSelection(selectedClasses)}` : "Цифровая платформа";
   const dailyWish = dailyWishes[getDayOfYear() % dailyWishes.length];
 
   return (
@@ -53,4 +54,9 @@ function getDayOfYear() {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   return Math.floor((now.getTime() - start.getTime()) / 86400000);
+}
+
+function formatClassSelection(classes: string[]) {
+  const unique = Array.from(new Set(classes.filter(Boolean)));
+  return unique.length > 6 ? `${unique.length} классов выбрано` : unique.join(", ");
 }

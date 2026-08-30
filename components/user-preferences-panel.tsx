@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { SelectField } from "./selectors";
 
 const sections = ["Новости", "Расписание", "Рейтинг", "Мероприятия", "PRo46", "Заявки"];
+const classGroupButtons = ["1-4 классы", "5-8 классы", "9-11 классы", "Все классы"];
 
 export function UserPreferencesPanel() {
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
@@ -42,6 +43,37 @@ export function UserPreferencesPanel() {
     setPrefs((current) => ({ ...current, ...value }));
   }
 
+  function updateClass(value: string) {
+    update({ selectedClass: value, selectedClasses: [value], groupName: value });
+  }
+
+  function toggleTeacherClass(className: string) {
+    setPrefs((current) => {
+      const currentClasses = normalizeSelectedClasses(current.selectedClasses, current.selectedClass, classOptions);
+      const exists = currentClasses.includes(className);
+      const selectedClasses = exists
+        ? currentClasses.filter((item) => item !== className)
+        : [...currentClasses, className];
+      const safeClasses = selectedClasses.length ? selectedClasses : [className];
+      return { ...current, selectedClass: safeClasses[0], selectedClasses: safeClasses, groupName: safeClasses.join(", ") };
+    });
+  }
+
+  function selectTeacherGroup(group: string) {
+    setPrefs((current) => {
+      const selectedClasses = getClassesByGroup(group, classOptions);
+      const safeClasses = selectedClasses.length ? selectedClasses : normalizeSelectedClasses(current.selectedClasses, current.selectedClass, classOptions);
+      return { ...current, selectedClass: safeClasses[0] ?? current.selectedClass, selectedClasses: safeClasses, groupName: safeClasses.join(", ") };
+    });
+  }
+
+  function resetTeacherClasses() {
+    setPrefs((current) => {
+      const safeClass = classOptions.includes(current.selectedClass) ? current.selectedClass : classOptions[0];
+      return { ...current, selectedClass: safeClass, selectedClasses: [safeClass], groupName: safeClass };
+    });
+  }
+
   function toggleSection(section: string) {
     const exists = prefs.favoriteSections.includes(section);
     update({
@@ -68,7 +100,53 @@ export function UserPreferencesPanel() {
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label="Класс" value={prefs.selectedClass} options={classOptions} onChange={(value) => update({ selectedClass: value, selectedClasses: [value], groupName: value })} />
+        {prefs.role === "teacher" ? (
+          <div className="grid gap-2 sm:col-span-2">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-600">Классы педагога</p>
+              <span className="rounded-[8px] bg-mist px-2 py-1 text-xs font-semibold text-slate-500">
+                {formatClassSelection(normalizeSelectedClasses(prefs.selectedClasses, prefs.selectedClass, classOptions))}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {classGroupButtons.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => selectTeacherGroup(item)}
+                  className="rounded-[8px] border border-line bg-white px-2 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:text-apple"
+                >
+                  {item}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={resetTeacherClasses}
+                className="rounded-[8px] border border-line bg-white px-2 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:text-coral"
+              >
+                Сбросить
+              </button>
+            </div>
+            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-[8px] border border-line bg-mist p-2">
+              {classOptions.map((item) => {
+                const selectedClasses = normalizeSelectedClasses(prefs.selectedClasses, prefs.selectedClass, classOptions);
+                const selected = selectedClasses.includes(item);
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => toggleTeacherClass(item)}
+                    className={`rounded-[8px] border px-3 py-2 text-sm font-semibold transition ${selected ? "border-apple bg-white text-apple shadow-sm" : "border-line bg-white text-slate-600 hover:-translate-y-0.5"}`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <SelectField label="Класс" value={prefs.selectedClass} options={classOptions} onChange={updateClass} />
+        )}
         <SelectField label="Педагог" value={prefs.selectedTeacher} options={teacherNames} onChange={(value) => update({ selectedTeacher: value })} />
       </div>
       <div className="grid gap-2">
@@ -88,4 +166,26 @@ export function UserPreferencesPanel() {
       </div>
     </div>
   );
+}
+
+function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options: string[]) {
+  const source = selectedClasses?.length ? selectedClasses : [selectedClass];
+  const filtered = source.filter((item) => options.includes(item));
+  const fallback = options.includes(selectedClass) ? selectedClass : options[0];
+  const unique = Array.from(new Set(filtered.length ? filtered : [fallback]));
+  return unique.filter(Boolean);
+}
+
+function getClassesByGroup(group: string, options: string[]) {
+  if (group === "Все классы") return options;
+  const [from, to] = group.match(/\d+/g)?.map(Number) ?? [];
+  return options.filter((item) => {
+    const number = Number(item.match(/\d{1,2}/)?.[0] ?? 0);
+    return number >= from && number <= to;
+  });
+}
+
+function formatClassSelection(classes: string[]) {
+  const unique = Array.from(new Set(classes.filter(Boolean)));
+  return unique.length > 6 ? `${unique.length} классов выбрано` : unique.join(", ");
 }

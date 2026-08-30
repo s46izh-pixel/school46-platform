@@ -32,6 +32,8 @@ const usefulLinks = [
   { href: "/contacts", label: "Контакты" }
 ];
 
+const classGroupButtons = ["1-4 классы", "5-8 классы", "9-11 классы", "Все классы"];
+
 export function TopControls() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -47,7 +49,11 @@ export function TopControls() {
     const savedClass = localStorage.getItem("school46.class");
     if (saved) {
       const parsed = normalizePreferences({ ...defaultPreferences, ...JSON.parse(saved) }, savedClass);
-      const nextPrefs = { ...parsed, selectedClass: savedClass ?? parsed.selectedClass, groupName: savedClass ?? parsed.groupName };
+      const nextPrefs = {
+        ...parsed,
+        selectedClass: parsed.selectedClass,
+        groupName: parsed.role === "teacher" ? formatClassSelection(parsed.selectedClasses ?? [parsed.selectedClass]) : savedClass ?? parsed.groupName
+      };
       setPrefs(nextPrefs);
       setDraftPrefs(nextPrefs);
     } else if (savedClass) {
@@ -132,9 +138,7 @@ export function TopControls() {
       const exists = currentClasses.includes(className);
       const selectedClasses = exists
         ? currentClasses.filter((item) => item !== className)
-        : currentClasses.length >= 3
-          ? currentClasses
-          : [...currentClasses, className];
+        : [...currentClasses, className];
       const safeClasses = selectedClasses.length ? selectedClasses : [className];
       return {
         ...current,
@@ -142,6 +146,23 @@ export function TopControls() {
         selectedClasses: safeClasses,
         groupName: safeClasses.join(", ")
       };
+    });
+  }
+
+  function selectDraftTeacherGroup(group: string) {
+    setSaved(false);
+    setDraftPrefs((current) => {
+      const selectedClasses = getClassesByGroup(group, classOptions);
+      const safeClasses = selectedClasses.length ? selectedClasses : normalizeSelectedClasses(current.selectedClasses, current.selectedClass, classOptions);
+      return { ...current, selectedClass: safeClasses[0] ?? current.selectedClass, selectedClasses: safeClasses, groupName: safeClasses.join(", ") };
+    });
+  }
+
+  function resetDraftTeacherClasses() {
+    setSaved(false);
+    setDraftPrefs((current) => {
+      const safeClass = classOptions.includes(current.selectedClass) ? current.selectedClass : classOptions[0];
+      return { ...current, selectedClass: safeClass, selectedClasses: [safeClass], groupName: safeClass };
     });
   }
 
@@ -245,18 +266,35 @@ export function TopControls() {
                 </div>
                 {draftPrefs.role === "teacher" ? (
                   <div className="grid gap-2">
-                    <p className="text-xs font-semibold text-slate-500">Классы педагога · до 3</p>
+                    <p className="text-xs font-semibold text-slate-500">Классы педагога</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {classGroupButtons.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => selectDraftTeacherGroup(item)}
+                          className="rounded-[8px] border border-line bg-white px-2 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:text-apple"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={resetDraftTeacherClasses}
+                        className="rounded-[8px] border border-line bg-white px-2 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:text-coral"
+                      >
+                        Сбросить
+                      </button>
+                    </div>
                     <div className="grid max-h-44 grid-cols-3 gap-2 overflow-y-auto rounded-[8px] border border-line bg-mist p-2">
                       {classOptions.map((item) => {
                         const selected = normalizeSelectedClasses(draftPrefs.selectedClasses, draftPrefs.selectedClass, classOptions).includes(item);
-                        const disabled = !selected && normalizeSelectedClasses(draftPrefs.selectedClasses, draftPrefs.selectedClass, classOptions).length >= 3;
                         return (
                           <button
                             key={item}
                             type="button"
                             onClick={() => toggleDraftTeacherClass(item)}
-                            disabled={disabled}
-                            className={`rounded-[8px] border px-2 py-2 text-sm font-semibold transition ${selected ? "border-apple bg-white text-apple shadow-sm" : "border-line bg-white text-slate-600"} ${disabled ? "cursor-not-allowed opacity-45" : "hover:-translate-y-0.5"}`}
+                            className={`rounded-[8px] border px-2 py-2 text-sm font-semibold transition ${selected ? "border-apple bg-white text-apple shadow-sm" : "border-line bg-white text-slate-600 hover:-translate-y-0.5"}`}
                           >
                             {item}
                           </button>
@@ -303,13 +341,27 @@ function normalizePreferences(preferences: UserPreferences, savedClass?: string 
     ...preferences,
     selectedClass: selectedClasses[0] ?? selectedClass,
     selectedClasses,
-    groupName: preferences.role === "teacher" ? selectedClasses.join(", ") : selectedClass
+    groupName: preferences.role === "teacher" ? formatClassSelection(selectedClasses) : selectedClass
   };
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options?: string[]) {
   const source = selectedClasses?.length ? selectedClasses : [selectedClass];
   const filtered = source.filter((item) => !options || options.includes(item));
-  const unique = Array.from(new Set(filtered.length ? filtered : [selectedClass])).slice(0, 3);
+  const unique = Array.from(new Set(filtered.length ? filtered : [selectedClass]));
   return unique.length ? unique : [selectedClass];
+}
+
+function getClassesByGroup(group: string, options: string[]) {
+  if (group === "Все классы") return options;
+  const [from, to] = group.match(/\d+/g)?.map(Number) ?? [];
+  return options.filter((item) => {
+    const number = Number(item.match(/\d{1,2}/)?.[0] ?? 0);
+    return number >= from && number <= to;
+  });
+}
+
+function formatClassSelection(classes: string[]) {
+  const unique = Array.from(new Set(classes.filter(Boolean)));
+  return unique.length > 6 ? `${unique.length} классов выбрано` : unique.join(", ");
 }

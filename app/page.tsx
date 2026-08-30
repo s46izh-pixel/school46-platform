@@ -51,7 +51,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="grid content-end gap-4">
-            <TodayOverview events={events} lessons={lessons} />
+            <TodayOverview events={events} lessons={lessons} changes={changes} />
             <div className="grid grid-cols-2 gap-4">
               <Card>
                 <Trophy className="mb-4 text-coral" />

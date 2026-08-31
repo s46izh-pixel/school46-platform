@@ -221,20 +221,21 @@ export default function NewEventPage() {
     }));
   }
 
-  function handleCoverFile(event: ChangeEvent<HTMLInputElement>) {
+  async function handleCoverFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
+      const cover = await imageFileToSquareDataUrl(file);
       setSaved(false);
       setForm((current) => ({
         ...current,
-        cover: typeof reader.result === "string" ? reader.result : current.cover,
+        cover,
         coverFileName: file.name
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      window.alert("Не удалось подготовить картинку. Попробуйте выбрать другое изображение.");
+    }
   }
 
   async function saveDraft(event: FormEvent) {
@@ -553,6 +554,37 @@ function parsePageBlocks(value: string | undefined, description: string): PageCo
     ...block,
     text: block.id === "position" && description ? description : block.text
   }));
+}
+
+function imageFileToSquareDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      try {
+        const size = 900;
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
+        const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas is unavailable");
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      } catch {
+        reject();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject();
+    };
+    image.src = url;
+  });
 }
 
 const translit: Record<string, string> = {

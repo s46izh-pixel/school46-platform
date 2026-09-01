@@ -7,7 +7,7 @@
     "build": "next build && opennextjs-cloudflare build -s --skipWranglerConfigCheck && node scripts/prepare-sites-dist.mjs",
     "build:next": "cross-env NEXT_DIST_DIR=.next-build next build",
     "build:vercel": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "lint": "next lint"
   },
   "dependencies": {

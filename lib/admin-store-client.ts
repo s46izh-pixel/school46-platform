@@ -9,7 +9,8 @@ export const defaultClientAdminStore: AdminStore = {
   calendarTemplateVisibility: {},
   newsVisibility: {},
   newsOverrides: {},
-  homeSections: {}
+  homeSections: {},
+  applications: []
 };
 
 export async function getAdminStore() {

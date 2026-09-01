@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 export function ApplicationForm({ event: selectedEvent }: { event?: EventItem }) {
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
   const [classOptions, setClassOptions] = useState(() => sortClasses(classes));
 
   useEffect(() => {
@@ -22,23 +23,33 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const files = form.getAll("files").filter((item): item is File => item instanceof File && Boolean(item.name));
-    await fetch("/api/applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...Object.fromEntries(form.entries()),
-        files: files.map((file) => ({ name: file.name, size: file.size, type: file.type })),
-        applicationId: crypto.randomUUID(),
-        eventId: selectedEvent?.id ?? "",
-        eventTitle: selectedEvent?.title ?? form.get("contest"),
-        eventType: selectedEvent?.type ?? "contest",
-        createdAt: new Date().toISOString()
-      })
-    });
-    setSent(true);
-    event.currentTarget.reset();
+    setError("");
+    try {
+      const form = new FormData(event.currentTarget);
+      const files = form.getAll("files").filter((item): item is File => item instanceof File && Boolean(item.name));
+      const attachments = await Promise.all(files.map(fileToAttachment));
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...Object.fromEntries(form.entries()),
+          files: attachments,
+          applicationId: crypto.randomUUID(),
+          eventId: selectedEvent?.id ?? "",
+          eventTitle: selectedEvent?.title ?? form.get("contest"),
+          eventType: selectedEvent?.type ?? "contest",
+          createdAt: new Date().toISOString()
+        })
+      });
+      if (!response.ok) {
+        setError("Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
+        return;
+      }
+      setSent(true);
+      event.currentTarget.reset();
+    } catch {
+      setError("Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
+    }
   }
 
   if (sent) {
@@ -46,7 +57,7 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
       <div className="rounded-[8px] border border-mint/30 bg-emerald-50 p-6 text-emerald-900">
         <CheckCircle2 className="mb-3" size={32} />
         <h2 className="text-2xl font-semibold">Заявка отправлена</h2>
-        <p className="mt-2 text-sm leading-6">Мы записали заявку через серверный API в mock-режиме. При подключении Google Sheets она будет попадать в таблицу.</p>
+        <p className="mt-2 text-sm leading-6">Мы записали заявку. Администратор увидит её в разделе заявок.</p>
       </div>
     );
   }
@@ -75,6 +86,7 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
         <input required name="consent" type="checkbox" className="mt-1" />
         Даю согласие на обработку данных для участия в конкурсе
       </label>
+      {error ? <p className="rounded-[8px] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</p> : null}
       <button className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 font-semibold text-white">
         <Send size={18} />
         Отправить заявку
@@ -124,17 +136,28 @@ const defaultFields: DynamicFormField[] = [
 
 const fieldLabels: Record<string, DynamicFormField> = {
   student: { name: "student", label: "ФИО участника", required: true },
+  "фио участника": { name: "student", label: "ФИО участника", required: true },
   className: { name: "className", label: "Класс", required: true },
+  "класс": { name: "className", label: "Класс", required: true },
   mentor: { name: "mentor", label: "ФИО руководителя", required: true },
+  "педагог": { name: "mentor", label: "ФИО руководителя", required: true },
+  "фио руководителя": { name: "mentor", label: "ФИО руководителя", required: true },
   nomination: { name: "nomination", label: "Номинация" },
+  "номинация": { name: "nomination", label: "Номинация" },
   contact: { name: "contact", label: "Контакт", required: true },
-  workUrl: { name: "workUrl", label: "Ссылка на работу", type: "url" }
+  "контакт": { name: "contact", label: "Контакт", required: true },
+  workUrl: { name: "workUrl", label: "Ссылка на работу", type: "url" },
+  "ссылка на работу": { name: "workUrl", label: "Ссылка на работу", type: "url" }
 };
 
 function resolveFields(event?: EventItem) {
-  const configured = event?.applicationFields?.filter((field) => field !== "className" && field !== "comment" && field !== "consent");
+  const configured = event?.applicationFields?.filter((field) => !isBuiltInField(field));
   if (!configured?.length) return defaultFields;
-  return configured.map((name) => fieldLabels[name] ?? { name, label: name });
+  return configured.map((name) => fieldLabels[name] ?? fieldLabels[name.toLowerCase()] ?? { name, label: name });
+}
+
+function isBuiltInField(name: string) {
+  return ["classname", "класс", "comment", "комментарий", "consent", "согласие"].includes(name.trim().toLowerCase());
 }
 
 function DynamicField({ field }: { field: DynamicFormField }) {
@@ -144,4 +167,25 @@ function DynamicField({ field }: { field: DynamicFormField }) {
       <input required={field.required} name={field.name} type={field.type ?? "text"} className="focus-ring rounded-[8px] border border-line px-3 py-2" />
     </label>
   );
+}
+
+async function fileToAttachment(file: File) {
+  const attachment = { name: file.name, size: file.size, type: file.type, dataUrl: undefined as string | undefined };
+  if (file.type.startsWith("image/") && file.size <= 700_000) {
+    try {
+      attachment.dataUrl = await readFileAsDataUrl(file);
+    } catch {
+      attachment.dataUrl = undefined;
+    }
+  }
+  return attachment;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

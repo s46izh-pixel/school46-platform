@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
-import type { NewsItem } from "./types";
+import type { ApplicationItem, NewsItem } from "./types";
 
 export type AdminStore = {
   eventPages: unknown[];
@@ -8,6 +8,8 @@ export type AdminStore = {
   newsVisibility: Record<string, boolean>;
   newsOverrides: Record<string, NewsItem>;
   homeSections: Record<string, boolean>;
+  applications: ApplicationItem[];
+  adminPasswordHash?: string;
 };
 
 export const defaultAdminStore: AdminStore = {
@@ -15,7 +17,8 @@ export const defaultAdminStore: AdminStore = {
   calendarTemplateVisibility: {},
   newsVisibility: {},
   newsOverrides: {},
-  homeSections: {}
+  homeSections: {},
+  applications: []
 };
 
 const storePath = path.join(process.cwd(), "data", "admin-store.json");
@@ -47,7 +50,9 @@ function sanitizeAdminStore(store: AdminStore): AdminStore {
     calendarTemplateVisibility: sanitizeBooleanRecord(store.calendarTemplateVisibility),
     newsVisibility: sanitizeBooleanRecord(store.newsVisibility),
     newsOverrides: sanitizeNewsOverrides(store.newsOverrides),
-    homeSections: sanitizeBooleanRecord(store.homeSections)
+    homeSections: sanitizeBooleanRecord(store.homeSections),
+    applications: sanitizeApplications(store.applications),
+    adminPasswordHash: typeof store.adminPasswordHash === "string" ? store.adminPasswordHash : undefined
   };
 }
 
@@ -64,6 +69,10 @@ function sanitizeEventPage(item: unknown) {
 function sanitizeNewsOverrides(value: unknown): Record<string, NewsItem> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as Record<string, NewsItem>;
+}
+
+function sanitizeApplications(value: unknown): ApplicationItem[] {
+  return Array.isArray(value) ? value as ApplicationItem[] : [];
 }
 
 function sanitizeBooleanRecord(value: unknown): Record<string, boolean> {

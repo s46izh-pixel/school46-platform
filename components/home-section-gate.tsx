@@ -1,12 +1,12 @@
 "use client";
 
 import { getAdminStore } from "@/lib/admin-store-client";
-import { defaultHomeSectionSettings, homeSectionSettingsKey, type HomeSectionId, type HomeSectionSettings } from "@/lib/home-sections";
+import { defaultHomeSectionSettings, type HomeSectionId } from "@/lib/home-sections";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 export function HomeSectionGate({ id, children }: { id: HomeSectionId; children: ReactNode }) {
-  const [settings, setSettings] = useState(defaultHomeSectionSettings);
+  const [settings, setSettings] = useState<Record<HomeSectionId, boolean> | null>(null);
 
   useEffect(() => {
     function loadSettings() {
@@ -24,5 +24,6 @@ export function HomeSectionGate({ id, children }: { id: HomeSectionId; children:
     };
   }, []);
 
+  if (!settings) return null;
   return settings[id] === false ? null : <>{children}</>;
 }

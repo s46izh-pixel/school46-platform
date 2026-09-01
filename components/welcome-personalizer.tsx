@@ -101,9 +101,10 @@ export function WelcomePersonalizer() {
   if (!mounted || !visible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/35 px-4 backdrop-blur-md">
-      <section className="sticker-panel w-full max-w-2xl rounded-[8px] border border-white/70 bg-white/95 p-5 shadow-soft backdrop-blur-2xl sm:p-6">
-        <div className="mb-5 flex items-start gap-3">
+    <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/35 px-3 py-3 backdrop-blur-md sm:px-4">
+      <section className="sticker-panel flex max-h-[calc(100dvh-24px)] w-full max-w-2xl flex-col overflow-hidden rounded-[8px] border border-white/70 bg-white/95 shadow-soft backdrop-blur-2xl">
+        <div className="shrink-0 border-b border-line/70 p-4 pb-3 sm:p-5">
+          <div className="flex items-start gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[8px] bg-[var(--accent-soft)] text-apple">
             <GraduationCap size={24} />
           </span>
@@ -112,9 +113,10 @@ export function WelcomePersonalizer() {
             <h2 className="text-2xl font-semibold text-ink">Настроим сайт под вас</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Это займёт пару секунд. Если выберете не то, всё можно поменять в настройках.</p>
           </div>
+          </div>
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 sm:p-5">
           <input
             value={draft.userName}
             onChange={(event) => update({ userName: event.target.value })}
@@ -169,7 +171,7 @@ export function WelcomePersonalizer() {
                     Сбросить
                   </button>
                 </div>
-                <div className="grid max-h-36 grid-cols-3 gap-2 overflow-y-auto rounded-[8px] border border-line bg-mist p-2">
+                <div className="grid max-h-32 grid-cols-3 gap-2 overflow-y-auto rounded-[8px] border border-line bg-mist p-2 sm:max-h-36">
                   {classOptions.map((item) => {
                     const selectedClasses = normalizeSelectedClasses(draft.selectedClasses, draft.selectedClass, classOptions);
                     const selected = selectedClasses.includes(item);
@@ -196,7 +198,10 @@ export function WelcomePersonalizer() {
             </label>
           )}
 
-          <button onClick={finish} className="focus-ring flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink px-5 font-semibold text-white">
+        </div>
+
+        <div className="shrink-0 border-t border-line/70 bg-white/95 p-3 sm:p-4">
+          <button onClick={finish} className="focus-ring flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-5 font-semibold text-white">
             <Check size={18} />
             Продолжить
           </button>

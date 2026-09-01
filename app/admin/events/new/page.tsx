@@ -4,7 +4,7 @@ import { Card, SectionTitle } from "@/components/card";
 import { getAdminStore, patchAdminStore } from "@/lib/admin-store-client";
 import { classes } from "@/lib/mock-data";
 import type { EventItem, ScheduleLesson } from "@/lib/types";
-import { CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -263,11 +263,11 @@ export default function NewEventPage() {
     <main className="min-h-screen bg-mist">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/admin" className="rounded-[8px] bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm">Назад в админку</Link>
+          <Link href="/admin?tab=events" className="rounded-[8px] bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm">Назад к мероприятиям</Link>
           {saved ? (
             <span className="flex items-center gap-2 rounded-[8px] bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
               <CheckCircle2 size={17} />
-              Черновик сохранен
+              Событие сохранено
             </span>
           ) : null}
         </div>
@@ -380,7 +380,7 @@ export default function NewEventPage() {
               </FormBlock>
             </div>
 
-            <aside className="grid content-start gap-5">
+            <aside className="grid content-start gap-5 lg:sticky lg:top-4 lg:self-start">
               <FormBlock title="Заявочная форма">
                 <label className="flex items-center justify-between gap-3 text-sm text-slate-600">
                   Принимать заявки
@@ -425,13 +425,25 @@ export default function NewEventPage() {
                   <FileUp size={18} />
                   Экспорт в Google документ
                 </button>
-                <button className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-ink px-4 py-3 font-semibold text-white">
-                  <Save size={18} />
-                  Сохранить страницу
-                </button>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                  <Link href="/admin?tab=events" className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-white px-4 py-3 font-semibold text-ink">
+                    <ArrowLeft size={18} />
+                    К мероприятиям
+                  </Link>
+                  <button className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-ink px-4 py-3 font-semibold text-white">
+                    <Save size={18} />
+                    Сохранить страницу
+                  </button>
+                </div>
               </FormBlock>
             </aside>
           </form>
+          {saved ? (
+            <div className="fixed bottom-5 right-5 z-[130] flex max-w-sm items-center gap-2 rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-soft">
+              <CheckCircle2 size={18} />
+              Событие сохранено
+            </div>
+          ) : null}
         </Card>
       </div>
     </main>

@@ -140,7 +140,7 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
           <h3 className="mb-3 text-sm font-semibold text-ink">Ближайшие события</h3>
           <div className="grid gap-2">
             {upcoming.length ? upcoming.map((item) => {
-              const upcomingClassName = `grid grid-cols-[92px_1fr] gap-3 rounded-[8px] border px-3 py-2 text-left text-sm shadow-sm ring-1 ring-apple/25 transition hover:bg-white hover:shadow-sm ${eventTypeClass(item.type)}`;
+              const upcomingClassName = `grid grid-cols-[92px_1fr] gap-3 rounded-[8px] border px-3 py-2 text-left text-sm shadow-sm ring-1 ring-apple/25 ${eventTypeClass(item.type)}`;
               const upcomingContent = (
                 <>
                 <span className="whitespace-nowrap font-semibold text-apple">{formatDate(item.date)}</span>
@@ -150,14 +150,10 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
                 </span>
                 </>
               );
-              return isManualEvent(item) ? (
-                <button key={item.id} onClick={() => setSelectedEvent(item)} className={upcomingClassName} style={eventColorStyle(item)}>
+              return (
+                <div key={item.id} className={upcomingClassName} style={eventColorStyle(item)}>
                   {upcomingContent}
-                </button>
-              ) : (
-                <a key={item.id} href={`/events/${item.slug}`} className={upcomingClassName} style={eventColorStyle(item)}>
-                  {upcomingContent}
-                </a>
+                </div>
               );
             }) : <p className="rounded-[8px] bg-mist px-3 py-2 text-sm text-slate-500">Ближайшие события пока не указаны.</p>}
           </div>

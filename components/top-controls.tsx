@@ -169,6 +169,7 @@ export function TopControls() {
   function saveSettings() {
     setPrefs(normalizePreferences(draftPrefs));
     setSaved(true);
+    setOpen(false);
     window.setTimeout(() => setSaved(false), 1800);
   }
 
@@ -321,7 +322,7 @@ export function TopControls() {
                 <p className="text-xs leading-5 text-slate-500">Если выбрали не то, это всегда можно поменять здесь.</p>
               </section>
 
-              <button onClick={saveSettings} className="focus-ring flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-semibold text-white">
+              <button type="button" onClick={saveSettings} className="focus-ring flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-semibold text-white">
                 <Check size={17} />
                 {saved ? "Сохранено" : "Сохранить"}
               </button>

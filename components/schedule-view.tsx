@@ -105,27 +105,16 @@ export function ScheduleView({ lessons, bells, changes }: { lessons: ScheduleLes
   const filtered = regularFiltered;
   const teacherLessons = useMemo(() => lessons.filter((lesson) => lesson.teacher && lesson.teacher === teacher), [lessons, teacher]);
   const teacherChanges = useMemo(() => changes.filter((change) => change.teacher && change.teacher === teacher), [changes, teacher]);
-  const todayTeacherLessons = useMemo(() => {
-    const today = getTodayScheduleDay();
-    return teacherLessons
-      .filter((lesson) => lesson.day === today)
-      .sort((first, second) => first.number - second.number || first.className.localeCompare(second.className, "ru", { numeric: true }));
-  }, [teacherLessons]);
-  const todayOverrideChanges = useMemo(() => {
-    const today = getTodayScheduleDay();
-    return changes.filter((change) => change.day === today);
-  }, [changes]);
-  const todayTeacherChanges = useMemo(() => {
-    const today = getTodayScheduleDay();
-    return teacherChanges
-      .filter((lesson) => lesson.day === today)
-      .sort((first, second) => first.number - second.number || first.className.localeCompare(second.className, "ru", { numeric: true }));
-  }, [teacherChanges]);
-  const teacherTodayItems = useMemo(
-    () => mergeLessonsWithChanges(todayTeacherLessons, todayTeacherChanges, todayOverrideChanges),
-    [todayOverrideChanges, todayTeacherChanges, todayTeacherLessons]
-  );
   const actualChangeDays = useMemo(() => getActualChangeDays(), []);
+  const teacherUpcomingItems = useMemo(
+    () => actualChangeDays.flatMap((day) => {
+      const dayTeacherLessons = teacherLessons.filter((lesson) => lesson.day === day);
+      const dayTeacherChanges = teacherChanges.filter((change) => change.day === day);
+      const dayOverrideChanges = changes.filter((change) => change.day === day);
+      return mergeLessonsWithChanges(dayTeacherLessons, dayTeacherChanges, dayOverrideChanges);
+    }),
+    [actualChangeDays, changes, teacherChanges, teacherLessons]
+  );
   const changeDays = useMemo(
     () => actualChangeDays.filter((day) => classChanges.some((change) => change.day === day)),
     [actualChangeDays, classChanges]
@@ -226,13 +215,13 @@ export function ScheduleView({ lessons, bells, changes }: { lessons: ScheduleLes
         {isTeacher ? <div className="mb-5">
           <h3 className="mb-3 font-semibold text-ink">Уроки педагога</h3>
           <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
-            {teacherTodayItems.map((lesson) => (
+            {teacherUpcomingItems.map((lesson) => (
               <div key={`${lesson.className}-${lesson.day}-${lesson.number}-${lesson.subject}`} className={`rounded-[8px] px-3 py-2 text-sm ${isScheduleChange(lesson) ? "bg-amber-50 text-amber-950" : "bg-mist"}`}>
                 <span className="block whitespace-nowrap font-semibold text-ink">{lesson.day} · {lesson.time}</span>
                 <span className="block text-slate-600">{lesson.className} · {lesson.subject}</span>
               </div>
             ))}
-            {!teacherTodayItems.length ? <p className="text-sm text-slate-500">На сегодня уроков у выбранного педагога нет.</p> : null}
+            {!teacherUpcomingItems.length ? <p className="text-sm text-slate-500">На сегодня и следующий учебный день уроков у выбранного педагога нет.</p> : null}
           </div>
         </div> : null}
         <h3 className="mb-3 font-semibold text-ink">Расписание звонков</h3>
@@ -297,7 +286,7 @@ function TeacherDaySchedule({ day, lessons, classes }: { day: string; lessons: S
         className="grid w-max min-w-full border-b border-line bg-white text-sm"
         style={{ gridTemplateColumns: gridColumns, width: `max(100%, ${gridWidth})` }}
       >
-        <div className="border-r border-line px-3 py-2 font-semibold text-slate-500">Урок</div>
+        <div className="sticky left-0 z-20 border-r border-line bg-white px-3 py-2 font-semibold text-slate-500 shadow-[8px_0_12px_-12px_rgba(15,23,42,0.45)]">Урок</div>
         {classes.map((classItem) => (
           <div key={classItem} className="border-r border-line px-3 py-2 text-center font-semibold text-apple last:border-r-0">
             {classItem}
@@ -310,7 +299,7 @@ function TeacherDaySchedule({ day, lessons, classes }: { day: string; lessons: S
           const time = rowLessons.find((lesson) => lesson.time)?.time;
           return (
             <div key={`${day}-${number}`} className="contents">
-              <div className="border-b border-r border-line bg-mist px-3 py-3 text-sm font-semibold text-apple">
+              <div className="sticky left-0 z-10 border-b border-r border-line bg-mist px-3 py-3 text-sm font-semibold text-apple shadow-[8px_0_12px_-12px_rgba(15,23,42,0.45)]">
                 <span className="block">{number}</span>
                 {time ? <span className="mt-1 block whitespace-nowrap text-xs text-slate-500">{time}</span> : null}
               </div>
@@ -372,7 +361,7 @@ function TeacherChangeTable({ day, changes, classes }: { day: string; changes: S
         className="grid w-max min-w-full border-b border-amber-200 bg-amber-50 text-sm"
         style={{ gridTemplateColumns: gridColumns, width: `max(100%, ${gridWidth})` }}
       >
-        <div className="border-r border-amber-200 px-3 py-2 font-semibold text-amber-900">Урок</div>
+        <div className="sticky left-0 z-20 border-r border-amber-200 bg-amber-50 px-3 py-2 font-semibold text-amber-900 shadow-[8px_0_12px_-12px_rgba(146,64,14,0.5)]">Урок</div>
         {classes.map((classItem) => (
           <div key={classItem} className="border-r border-amber-200 px-3 py-2 text-center font-semibold text-amber-900 last:border-r-0">
             {classItem}
@@ -382,7 +371,7 @@ function TeacherChangeTable({ day, changes, classes }: { day: string; changes: S
       <div className="grid w-max min-w-full" style={{ gridTemplateColumns: gridColumns, width: `max(100%, ${gridWidth})` }}>
         {changeRows.map((row) => (
           <div key={`${day}-${row.key}`} className="contents">
-            <div className="border-b border-r border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-900">
+            <div className="sticky left-0 z-10 border-b border-r border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-900 shadow-[8px_0_12px_-12px_rgba(146,64,14,0.5)]">
               <span className="block">{row.number}</span>
               <span className="mt-1 block whitespace-nowrap text-xs text-amber-700">{row.time}</span>
             </div>
@@ -442,11 +431,6 @@ function getActualChangeDays() {
   const currentDay = dayOrder[todayIndex - 1];
   const nextDay = dayOrder[todayIndex];
   return [currentDay, nextDay].filter(Boolean);
-}
-
-function getTodayScheduleDay() {
-  const todayIndex = new Date().getDay();
-  return dayOrder[todayIndex - 1] ?? dayOrder[0];
 }
 
 function compareChangeTime(first: ScheduleChange, second: ScheduleChange) {

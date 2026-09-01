@@ -9,9 +9,9 @@ export const roles: Array<{ id: UserRole; title: string; description: string }> 
 ];
 
 const permissions: Record<UserRole, string[]> = {
-  admin: ["Dashboard", "Новости", "Мероприятия", "Акции", "Заявки", "Рейтинг", "Расписание", "Настройки", "Пользователи и роли"],
+  admin: ["Dashboard", "Новости", "Мероприятия", "Заявки", "Расписание", "Настройки", "Пользователи и роли"],
   news_editor: ["Dashboard", "Новости"],
-  event_manager: ["Dashboard", "Мероприятия", "Акции", "Заявки"],
+  event_manager: ["Dashboard", "Мероприятия", "Заявки"],
   class_teacher: ["Dashboard", "Новости", "Мероприятия", "Заявки"],
   viewer: []
 };

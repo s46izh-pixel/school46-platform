@@ -4,12 +4,12 @@ import { Card, SectionTitle } from "@/components/card";
 import { getAdminStore, patchAdminStore, type AdminStore } from "@/lib/admin-store-client";
 import { getAllowedAdminSections, roles, canAccessAdmin } from "@/lib/auth";
 import { defaultHomeSectionSettings, homeSections, homeSectionSettingsKey, type HomeSectionId, type HomeSectionSettings } from "@/lib/home-sections";
-import { actions, applications, classes, events, news, rating } from "@/lib/mock-data";
+import { actions, classes, events, news } from "@/lib/mock-data";
 import { newsOverridesKey, newsVisibilityKey, type NewsVisibility } from "@/lib/news-visibility";
 import { hasConfiguredSheets } from "@/lib/sheets-config";
 import { roleStorageKey } from "@/lib/storage";
-import type { EventItem, NewsItem, UserRole } from "@/lib/types";
-import { CalendarPlus, Copy, Download, Eye, EyeOff, FilePenLine, FileUp, Lock, Newspaper, Plus, Settings, ShieldCheck, Trash2, Trophy, Users } from "lucide-react";
+import type { ApplicationItem, EventItem, NewsItem, UserRole } from "@/lib/types";
+import { CalendarPlus, Check, Copy, Download, Eye, EyeOff, FilePenLine, Lock, Newspaper, Plus, Settings, ShieldCheck, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -19,15 +19,22 @@ export default function AdminPage() {
   const [active, setActive] = useState("Dashboard");
   const [unlocked, setUnlocked] = useState(false);
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [remoteEvents, setRemoteEvents] = useState<EventItem[]>(events);
   const [eventPageDrafts, setEventPageDrafts] = useState<EventPageDraft[]>([]);
+  const [adminApplications, setAdminApplications] = useState<ApplicationItem[]>([]);
 
   const allowedTabs = useMemo(() => getAllowedAdminSections(role), [role]);
 
   useEffect(() => {
     const savedRole = (localStorage.getItem(roleStorageKey) as UserRole | null) ?? "admin";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "events") setActive("Мероприятия");
     setRole(savedRole);
-    setUnlocked(localStorage.getItem("school46.admin") === "ok");
+    fetch("/api/admin-auth", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { authenticated?: boolean }) => setUnlocked(Boolean(data.authenticated)))
+      .catch(() => setUnlocked(false));
   }, []);
 
   useEffect(() => {
@@ -46,17 +53,31 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!unlocked) return;
+    fetchApplications().then(setAdminApplications).catch(() => setAdminApplications([]));
+  }, [unlocked]);
+
+  useEffect(() => {
+    if (!unlocked) return;
     migrateLocalAdminStore()
       .then(getAdminStore)
       .then((store) => setEventPageDrafts(store.eventPages as EventPageDraft[]))
       .catch(() => setEventPageDrafts([]));
   }, [active, unlocked]);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (password === "school46") {
+    setLoginError("");
+    const response = await fetch("/api/admin-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    if (response.ok) {
       localStorage.setItem("school46.admin", "ok");
       setUnlocked(true);
+      setPassword("");
+    } else {
+      setLoginError("Неверный пароль.");
     }
   }
 
@@ -66,9 +87,10 @@ export default function AdminPage() {
         <Card className="w-full max-w-md">
           <Lock className="mb-4 text-apple" size={32} />
           <h1 className="text-2xl font-semibold">Вход в админ-панель</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Mock-auth для первого этапа. Пароль по умолчанию: school46.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Введите пароль администратора, чтобы открыть управление сайтом.</p>
           <form onSubmit={submit} className="mt-6 grid gap-3">
             <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Пароль" type="password" className="focus-ring rounded-[8px] border border-line px-3 py-3" />
+            {loginError ? <p className="rounded-[8px] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{loginError}</p> : null}
             <button className="focus-ring rounded-[8px] bg-ink px-4 py-3 font-semibold text-white">Войти</button>
             <Link href="/" className="text-center text-sm font-semibold text-apple">На главную</Link>
           </form>
@@ -113,12 +135,10 @@ export default function AdminPage() {
         </div>
 
         <Card className="bg-white">
-          {active === "Dashboard" ? <Dashboard events={remoteEvents} /> : null}
+          {active === "Dashboard" ? <Dashboard events={remoteEvents} applications={adminApplications} /> : null}
           {active === "Новости" ? <NewsEditor role={role} /> : null}
           {active === "Мероприятия" ? <EventsEditor title="Мероприятия" events={remoteEvents} drafts={eventPageDrafts} /> : null}
-          {active === "Акции" ? <EventsEditor title="Акции" events={remoteEvents} drafts={eventPageDrafts} isAction /> : null}
-          {active === "Заявки" ? <ApplicationsTable /> : null}
-          {active === "Рейтинг" ? <RatingPreview /> : null}
+          {active === "Заявки" ? <ApplicationsTable applications={adminApplications} setApplications={setAdminApplications} /> : null}
           {active === "Расписание" ? <SchedulePreview /> : null}
           {active === "Настройки" ? <SettingsPanel /> : null}
           {active === "Пользователи и роли" ? <RolesPanel /> : null}
@@ -136,19 +156,18 @@ function RoleSwitcher({ role, setRole }: { role: UserRole; setRole: (role: UserR
   );
 }
 
-function Dashboard({ events: adminEvents }: { events: EventItem[] }) {
+function Dashboard({ events: adminEvents, applications: adminApplications }: { events: EventItem[]; applications: ApplicationItem[] }) {
   return (
     <div className="grid gap-6">
       <SectionTitle eyebrow="Dashboard" title="Обзор платформы" />
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Metric icon={<Newspaper />} label="Новости" value={news.length} />
         <Metric icon={<CalendarPlus />} label="Мероприятия" value={adminEvents.length} />
-        <Metric icon={<FilePenLine />} label="Заявки" value={applications.length} />
-        <Metric icon={<Trophy />} label="Классы" value={rating.length} />
+        <Metric icon={<FilePenLine />} label="Заявки" value={adminApplications.length} />
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <AdminList title="Ближайшие события" items={adminEvents.map((item) => `${item.date} · ${item.title} · ${item.status}`)} />
-        <AdminList title="Последние заявки" items={applications.map((item) => `${item.contest} · ${item.student} · ${item.status}`)} />
+        <AdminList title="Последние заявки" items={adminApplications.map((item) => `${item.contest} · ${item.student} · ${item.status}`)} />
       </div>
     </div>
   );
@@ -253,12 +272,35 @@ type EventPageDraft = {
 
 type CalendarTemplateVisibility = Record<string, boolean>;
 
-function EventsEditor({ title, events: adminEvents, drafts, isAction }: { title: string; events: EventItem[]; drafts: EventPageDraft[]; isAction?: boolean }) {
-  const source = isAction ? adminEvents.filter((item) => item.type === "action") : adminEvents;
+function eventDraftMonthLabel(date: string | undefined) {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Без даты";
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return "Без даты";
+  return new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(parsed);
+}
+
+function uniqueFilterValues(values: string[]) {
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+}
+
+function EventsEditor({ title, events: adminEvents, drafts }: { title: string; events: EventItem[]; drafts: EventPageDraft[] }) {
+  const source = adminEvents;
   const [templateVisibility, setTemplateVisibility] = useState<CalendarTemplateVisibility>({});
   const actions = source.map((item) => ({ label: "Страница", href: `/events/${item.slug}`, slug: item.slug, published: templateVisibility[item.slug] === true }));
-  const visibleDrafts = isAction ? drafts.filter((item) => item.category === "Акция") : drafts;
+  const visibleDrafts = drafts;
   const [manualDrafts, setManualDrafts] = useState(visibleDrafts);
+  const [manualMonthFilter, setManualMonthFilter] = useState("Все месяцы");
+  const [manualCategoryFilter, setManualCategoryFilter] = useState("Все типы");
+  const manualMonthOptions = useMemo(() => ["Все месяцы", ...uniqueFilterValues(manualDrafts.map((item) => eventDraftMonthLabel(item.startDate)))], [manualDrafts]);
+  const manualCategoryOptions = useMemo(() => ["Все типы", ...uniqueFilterValues(manualDrafts.map((item) => item.category || "Мероприятие"))], [manualDrafts]);
+  const filteredManualDrafts = useMemo(
+    () => manualDrafts.filter((item) => {
+      const byMonth = manualMonthFilter === "Все месяцы" || eventDraftMonthLabel(item.startDate) === manualMonthFilter;
+      const byCategory = manualCategoryFilter === "Все типы" || (item.category || "Мероприятие") === manualCategoryFilter;
+      return byMonth && byCategory;
+    }),
+    [manualCategoryFilter, manualDrafts, manualMonthFilter]
+  );
 
   useEffect(() => {
     getAdminStore().then((store) => setTemplateVisibility(store.calendarTemplateVisibility)).catch(() => setTemplateVisibility({}));
@@ -270,7 +312,7 @@ function EventsEditor({ title, events: adminEvents, drafts, isAction }: { title:
 
   function updateManualDrafts(nextDrafts: EventPageDraft[]) {
     patchAdminStore({ eventPages: nextDrafts }).catch(() => null);
-    setManualDrafts(isAction ? nextDrafts.filter((item) => item.category === "Акция") : nextDrafts);
+    setManualDrafts(nextDrafts);
   }
 
   async function toggleManualPage(slug: string) {
@@ -308,17 +350,31 @@ function EventsEditor({ title, events: adminEvents, drafts, isAction }: { title:
       <p className="mb-4 rounded-[8px] bg-mist px-4 py-3 text-sm leading-6 text-slate-600">
         Календарь ниже показывает события из Google-таблицы. Страницы мероприятий создаются отдельно с нуля и не зависят от календарной строки.
       </p>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-5">
         <div className="grid gap-5">
           {manualDrafts.length ? (
-            <EventPageManager
-              title="Созданные вручную"
-              description="Эти страницы созданы в конструкторе и не привязаны к Google-календарю."
-              items={manualDrafts.map((item) => `${item.startDate || "Без даты"} · ${item.title || "Без названия"} · ${item.status}`)}
-              actions={manualDrafts.map((item) => ({ label: "Редактировать", href: `/admin/events/new?edit=${encodeURIComponent(item.slug)}`, publicHref: `/events/manual/${encodeURIComponent(item.slug)}`, slug: item.slug, adminOnly: true, published: item.published !== false }))}
-              onToggle={toggleManualPage}
-              onDelete={deleteManualPage}
-            />
+            <div className="rounded-[8px] border border-line bg-white p-4">
+              <div className="mb-4 grid gap-3 md:grid-cols-[1fr_220px_220px] md:items-end">
+                <div>
+                  <h3 className="flex items-center gap-2 font-semibold text-ink"><FilePenLine size={18} /> Созданные вручную</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Эти страницы созданы в конструкторе и не привязаны к Google-календарю.</p>
+                </div>
+                <select value={manualMonthFilter} onChange={(event) => setManualMonthFilter(event.target.value)} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-sm font-semibold text-ink">
+                  {manualMonthOptions.map((item) => <option key={item}>{item}</option>)}
+                </select>
+                <select value={manualCategoryFilter} onChange={(event) => setManualCategoryFilter(event.target.value)} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-sm font-semibold text-ink">
+                  {manualCategoryOptions.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </div>
+              <EventPageManager
+                compact
+                items={filteredManualDrafts.map((item) => `${item.startDate || "Без даты"} · ${item.title || "Без названия"} · ${item.status}`)}
+                actions={filteredManualDrafts.map((item) => ({ label: "Редактировать", href: `/admin/events/new?edit=${encodeURIComponent(item.slug)}`, publicHref: `/events/manual/${encodeURIComponent(item.slug)}`, slug: item.slug, adminOnly: true, published: item.published !== false }))}
+                onToggle={toggleManualPage}
+                onDelete={deleteManualPage}
+              />
+              {!filteredManualDrafts.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">По выбранным фильтрам страниц нет.</p> : null}
+            </div>
           ) : null}
           <EventPageManager
             title="Шаблоны из календаря"
@@ -328,58 +384,277 @@ function EventsEditor({ title, events: adminEvents, drafts, isAction }: { title:
             onToggle={toggleCalendarTemplate}
           />
         </div>
-        <AdminList title="События календаря" items={source.map((item) => `${item.date} · ${item.title} · ${item.status}`)} actions={actions} />
       </div>
     </div>
   );
 }
 
-function ApplicationsTable() {
-  const [eventFilter, setEventFilter] = useState("Все");
+function ApplicationsTable({ applications, setApplications }: { applications: ApplicationItem[]; setApplications: (items: ApplicationItem[]) => void }) {
+  const [selectedEvent, setSelectedEvent] = useState("");
   const [typeFilter, setTypeFilter] = useState("Все");
   const [classFilter, setClassFilter] = useState("Все");
   const [statusFilter, setStatusFilter] = useState("Все");
-  const filtered = applications.filter((item) =>
-    (eventFilter === "Все" || item.eventTitle === eventFilter) &&
+  const [activeApplication, setActiveApplication] = useState<ApplicationItem | null>(null);
+  const [editingApplication, setEditingApplication] = useState<ApplicationItem | null>(null);
+  const [message, setMessage] = useState("");
+  const eventGroups = useMemo(() => groupApplicationsByEvent(applications), [applications]);
+  const selectedApplications = selectedEvent ? applications.filter((item) => item.eventTitle === selectedEvent) : [];
+  const filtered = selectedApplications.filter((item) =>
     (typeFilter === "Все" || item.eventType === typeFilter) &&
     (classFilter === "Все" || item.className === classFilter) &&
     (statusFilter === "Все" || item.status === statusFilter)
   );
+  const classOptions = useMemo(() => ["Все", ...uniqueFilterValues(selectedApplications.map((item) => item.className))], [selectedApplications]);
+  const typeOptions = useMemo(() => ["Все", ...uniqueFilterValues(selectedApplications.map((item) => item.eventType))], [selectedApplications]);
+
+  async function refresh() {
+    const nextApplications = await fetchApplications();
+    setApplications(nextApplications);
+    setMessage("Список заявок обновлён.");
+  }
+
+  async function removeApplication(id: string) {
+    if (!window.confirm("Удалить заявку?")) return;
+    const nextApplications = await deleteApplication(id);
+    setApplications(nextApplications);
+    setActiveApplication(null);
+    setEditingApplication(null);
+    setMessage("Заявка удалена.");
+  }
+
+  async function saveApplication(application: ApplicationItem) {
+    const nextApplications = await updateApplication(application);
+    setApplications(nextApplications);
+    setEditingApplication(null);
+    setActiveApplication(null);
+    setMessage("Заявка обновлена.");
+  }
+
+  function openEvent(title: string) {
+    setSelectedEvent(title);
+    setTypeFilter("Все");
+    setClassFilter("Все");
+    setStatusFilter("Все");
+    setMessage("");
+  }
 
   return (
     <div className="grid gap-4">
       <SectionTitle eyebrow="Администрирование" title="Заявки" />
-      <div className="grid gap-3 rounded-[8px] bg-mist p-4 md:grid-cols-4">
-        <select value={eventFilter} onChange={(event) => setEventFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
-          {["Все", ...Array.from(new Set(applications.map((item) => item.eventTitle)))].map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
-          {["Все", "event", "contest", "action"].map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
-          {["Все", ...classes].map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
-          {["Все", "new", "accepted", "revision", "rejected", "sent"].map((item) => <option key={item}>{item}</option>)}
-        </select>
-      </div>
-      <AdminList title="Все заявки" items={filtered.map((item) => `${item.eventTitle} · ${item.student} · ${item.className} · ${item.status}`)} />
-      <div className="flex flex-wrap gap-2 rounded-[8px] bg-mist p-4">
-        <button onClick={() => downloadApplications(filtered)} className="flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white">
-          <Download size={17} />
-          Скачать заявки CSV
-        </button>
-        <button className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink">
-          <FileUp size={17} />
-          Экспорт в Google документ
-        </button>
+      {message ? <p className="rounded-[8px] bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</p> : null}
+      {!selectedEvent ? (
+        <>
+          <div className="flex flex-wrap gap-2 rounded-[8px] bg-mist p-4">
+            <button type="button" onClick={refresh} className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink">
+              <Check size={17} />
+              Обновить список
+            </button>
+            <button type="button" onClick={() => downloadApplicationsExcel(applications)} disabled={!applications.length} className="flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+              <Download size={17} />
+              Скачать все заявки Excel
+            </button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {!eventGroups.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">Пока нет заявок.</p> : null}
+            {eventGroups.map((group) => (
+              <button key={group.title} type="button" onClick={() => openEvent(group.title)} className="focus-ring rounded-[8px] border border-line bg-white p-4 text-left shadow-sm transition hover:border-apple hover:bg-sky-50">
+                <span className="block text-sm font-semibold text-slate-500">{eventTypeLabel(group.type)}</span>
+                <span className="mt-1 block text-lg font-semibold text-ink">{group.title}</span>
+                <span className="mt-3 inline-flex rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-700">{group.count} {applicationCountLabel(group.count)}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[8px] bg-mist p-4">
+            <div>
+              <button type="button" onClick={() => setSelectedEvent("")} className="mb-2 text-sm font-semibold text-apple">Назад к мероприятиям</button>
+              <h3 className="text-xl font-semibold text-ink">{selectedEvent}</h3>
+              <p className="text-sm text-slate-500">{selectedApplications.length} {applicationCountLabel(selectedApplications.length)}</p>
+            </div>
+            <button type="button" onClick={() => downloadApplicationsExcel(filtered)} disabled={!filtered.length} className="flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+              <Download size={17} />
+              Скачать Excel
+            </button>
+          </div>
+          <div className="grid gap-3 rounded-[8px] bg-mist p-4 md:grid-cols-3">
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
+              {typeOptions.map((item) => <option key={item}>{item}</option>)}
+            </select>
+            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
+              {classOptions.map((item) => <option key={item}>{item}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
+              {["Все", "new", "accepted", "revision", "rejected", "sent"].map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            {!filtered.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">По этим фильтрам заявок нет.</p> : null}
+            {filtered.map((item) => (
+              <div key={item.id} className="rounded-[8px] border border-line bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">{item.student || "Без имени"} · {item.className || "Класс не указан"}</p>
+                    <p className="mt-1 text-sm text-slate-500">{formatDateTime(item.createdAt)} · {statusLabel(item.status)}</p>
+                    {item.files?.length ? <p className="mt-1 text-sm font-semibold text-apple">Вложения: {item.files.length}</p> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setActiveApplication(item)} className="rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white">Открыть</button>
+                    <button type="button" onClick={() => setEditingApplication(item)} className="flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">
+                      <FilePenLine size={15} />
+                      Изменить
+                    </button>
+                    <button type="button" onClick={() => removeApplication(item.id)} className="flex items-center gap-2 rounded-[8px] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                      <Trash2 size={15} />
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {activeApplication ? <ApplicationDetailsModal application={activeApplication} onClose={() => setActiveApplication(null)} /> : null}
+      {editingApplication ? <ApplicationEditModal application={editingApplication} onClose={() => setEditingApplication(null)} onSave={saveApplication} /> : null}
+    </div>
+  );
+}
+
+function ApplicationDetailsModal({ application, onClose }: { application: ApplicationItem; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[8px] bg-white p-5 shadow-soft">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-apple">{application.eventTitle}</p>
+            <h3 className="text-2xl font-semibold text-ink">{application.student || "Заявка"}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">Закрыть</button>
+        </div>
+        <ApplicationInfoGrid application={application} />
+        <ApplicationFiles files={application.files ?? []} />
       </div>
     </div>
   );
 }
 
-function RatingPreview() {
-  return <AdminList title="Рейтинг классов" items={rating.map((item) => `${item.place}. ${item.className} · ${item.points} баллов · ${item.comment}`)} />;
+function ApplicationEditModal({
+  application,
+  onClose,
+  onSave
+}: {
+  application: ApplicationItem;
+  onClose: () => void;
+  onSave: (application: ApplicationItem) => void;
+}) {
+  const [draft, setDraft] = useState(application);
+
+  function updateField(field: keyof ApplicationItem, value: string) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(draft);
+        }}
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[8px] bg-white p-5 shadow-soft"
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-apple">{draft.eventTitle}</p>
+            <h3 className="text-2xl font-semibold text-ink">Изменить заявку</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">Отмена</button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <ApplicationInput label="Участник" value={draft.student} onChange={(value) => updateField("student", value)} />
+          <ApplicationInput label="Класс" value={draft.className} onChange={(value) => updateField("className", value)} />
+          <ApplicationInput label="Педагог" value={draft.mentor} onChange={(value) => updateField("mentor", value)} />
+          <ApplicationInput label="Номинация" value={draft.nomination} onChange={(value) => updateField("nomination", value)} />
+          <ApplicationInput label="Контакт" value={draft.contact} onChange={(value) => updateField("contact", value)} />
+          <ApplicationInput label="Ссылка на работу" value={draft.workUrl} onChange={(value) => updateField("workUrl", value)} />
+          <label className="grid gap-2 text-sm font-medium text-slate-600">
+            Статус
+            <select value={draft.status} onChange={(event) => updateField("status", event.target.value)} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2">
+              {["new", "accepted", "revision", "rejected", "sent"].map((status) => <option key={status} value={status}>{statusLabel(status as ApplicationItem["status"])}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-slate-600 md:col-span-2">
+            Комментарий
+            <textarea value={draft.comment} onChange={(event) => updateField("comment", event.target.value)} rows={4} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2" />
+          </label>
+        </div>
+        <ApplicationFiles files={draft.files ?? []} />
+        <button className="mt-4 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white">Сохранить заявку</button>
+      </form>
+    </div>
+  );
+}
+
+function ApplicationInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="grid gap-2 text-sm font-medium text-slate-600">
+      {label}
+      <input value={value} onChange={(event) => onChange(event.target.value)} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2" />
+    </label>
+  );
+}
+
+function ApplicationInfoGrid({ application }: { application: ApplicationItem }) {
+  const rows = [
+    ["Дата", formatDateTime(application.createdAt)],
+    ["Тип", eventTypeLabel(application.eventType)],
+    ["Статус", statusLabel(application.status)],
+    ["Класс", application.className],
+    ["Педагог", application.mentor],
+    ["Номинация", application.nomination],
+    ["Контакт", application.contact],
+    ["Ссылка на работу", application.workUrl],
+    ["Комментарий", application.comment]
+  ];
+
+  return (
+    <div className="grid gap-2 md:grid-cols-2">
+      {rows.map(([label, value]) => (
+        <div key={label} className="rounded-[8px] border border-line bg-mist p-3">
+          <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+          {label === "Ссылка на работу" && value ? (
+            <a href={value} target="_blank" rel="noreferrer" className="mt-1 block break-words font-semibold text-apple">{value}</a>
+          ) : (
+            <p className="mt-1 break-words font-semibold text-ink">{value || "Не указано"}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ApplicationFiles({ files }: { files: NonNullable<ApplicationItem["files"]> }) {
+  if (!files.length) return null;
+  return (
+    <div className="mt-4 rounded-[8px] border border-line bg-white p-4">
+      <h4 className="mb-3 font-semibold text-ink">Вложения</h4>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {files.map((file) => (
+          <div key={`${file.name}-${file.size}`} className="rounded-[8px] border border-line bg-mist p-3">
+            <p className="break-words text-sm font-semibold text-ink">{file.name}</p>
+            <p className="mt-1 text-xs text-slate-500">{file.type || "файл"} · {formatFileSize(file.size)}</p>
+            {file.dataUrl ? (
+              <a href={file.dataUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-[8px] border border-line bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={file.dataUrl} alt={file.name} className="max-h-64 w-full object-contain" />
+              </a>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function SchedulePreview() {
@@ -391,21 +666,39 @@ function SettingsPanel() {
     ? "Google Таблицы подключены"
     : "Google Таблицы не подключены — используется демо-режим";
   const [homeSettings, setHomeSettings] = useState(defaultHomeSectionSettings);
+  const [savedHomeSettings, setSavedHomeSettings] = useState(defaultHomeSectionSettings);
+  const [homeSettingsMessage, setHomeSettingsMessage] = useState("");
 
   useEffect(() => {
     getAdminStore()
-      .then((store) => setHomeSettings({ ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>))
-      .catch(() => setHomeSettings(defaultHomeSectionSettings()));
+      .then((store) => {
+        const next = { ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>;
+        setHomeSettings(next);
+        setSavedHomeSettings(next);
+      })
+      .catch(() => {
+        const defaults = defaultHomeSectionSettings();
+        setHomeSettings(defaults);
+        setSavedHomeSettings(defaults);
+      });
   }, []);
 
   function toggleHomeSection(id: HomeSectionId) {
+    setHomeSettingsMessage("");
     setHomeSettings((current) => {
       const next = { ...current, [id]: current[id] === false };
-      patchAdminStore({ homeSections: next }).catch(() => null);
-      window.dispatchEvent(new CustomEvent("school46.home-sections-updated"));
       return next;
     });
   }
+
+  async function saveHomeSections() {
+    await patchAdminStore({ homeSections: homeSettings });
+    setSavedHomeSettings(homeSettings);
+    setHomeSettingsMessage("Настройки блоков сохранены.");
+    window.dispatchEvent(new CustomEvent("school46.home-sections-updated"));
+  }
+
+  const homeSettingsChanged = JSON.stringify(homeSettings) !== JSON.stringify(savedHomeSettings);
 
   return (
     <div className="grid gap-5">
@@ -435,9 +728,77 @@ function SettingsPanel() {
             );
           })}
         </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={saveHomeSections}
+            className="focus-ring flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!homeSettingsChanged}
+          >
+            <Check size={17} />
+            Сохранить
+          </button>
+          {homeSettingsMessage ? <span className="text-sm font-semibold text-emerald-700">{homeSettingsMessage}</span> : null}
+          {homeSettingsChanged ? <span className="text-sm font-semibold text-amber-700">Есть несохранённые изменения</span> : null}
+        </div>
       </div>
-      <AdminList title="Системные настройки" items={[googleStatus, "ID таблиц и названия листов вынесены в lib/sheets-config.ts", "Пароль админки можно заменить переменной окружения", "Mock-режим остается активным без ключей Google"]} icon={<Settings />} />
+      <PasswordSettings />
+      <AdminList title="Системные настройки" items={[googleStatus, "ID таблиц и названия листов вынесены в lib/sheets-config.ts", "Mock-режим остается активным без ключей Google"]} icon={<Settings />} />
     </div>
+  );
+}
+
+function PasswordSettings() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    if (newPassword.length < 6) {
+      setError("Новый пароль должен быть не короче 6 символов.");
+      return;
+    }
+    if (newPassword !== repeatPassword) {
+      setError("Повтор пароля не совпадает.");
+      return;
+    }
+
+    const response = await fetch("/api/admin-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "change-password", currentPassword, newPassword })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({ message: "Не удалось сменить пароль." }));
+      setError(data.message || "Не удалось сменить пароль.");
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setRepeatPassword("");
+    setMessage("Пароль обновлен.");
+  }
+
+  return (
+    <form onSubmit={submit} className="rounded-[8px] border border-line bg-white p-4">
+      <h3 className="mb-2 flex items-center gap-2 font-semibold text-ink"><ShieldCheck size={18} /> Пароль админки</h3>
+      <p className="mb-4 text-sm leading-6 text-slate-500">Смените пароль для входа в панель управления. Новый пароль начнет действовать сразу.</p>
+      <div className="grid gap-3 md:grid-cols-3">
+        <input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} type="password" placeholder="Текущий пароль" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+        <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" placeholder="Новый пароль" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+        <input value={repeatPassword} onChange={(event) => setRepeatPassword(event.target.value)} type="password" placeholder="Повторите пароль" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+      </div>
+      {error ? <p className="mt-3 rounded-[8px] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</p> : null}
+      {message ? <p className="mt-3 rounded-[8px] bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{message}</p> : null}
+      <button className="focus-ring mt-4 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white">Сменить пароль</button>
+    </form>
   );
 }
 
@@ -467,7 +828,8 @@ function EventPageManager({
   items,
   actions,
   onToggle,
-  onDelete
+  onDelete,
+  compact = false
 }: {
   title?: string;
   description?: string;
@@ -475,11 +837,16 @@ function EventPageManager({
   actions: Array<{ label: string; href: string; publicHref?: string; slug?: string; adminOnly?: boolean; published?: boolean }>;
   onToggle?: (slug: string) => void;
   onDelete?: (slug: string) => void;
+  compact?: boolean;
 }) {
-  return (
-    <div className="rounded-[8px] border border-line bg-white p-4">
+  const content = (
+    <>
+      {!compact ? (
+        <>
       <h3 className="mb-3 flex items-center gap-2 font-semibold text-ink"><FilePenLine size={18} /> {title}</h3>
       <p className="mb-4 text-sm leading-6 text-slate-500">{description}</p>
+        </>
+      ) : null}
       <div className="grid gap-2">
         {items.map((item, index) => (
           <div key={`${item}-page`} className="rounded-[8px] border border-line bg-mist p-3">
@@ -516,6 +883,14 @@ function EventPageManager({
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (compact) return content;
+
+  return (
+    <div className="rounded-[8px] border border-line bg-white p-4">
+      {content}
     </div>
   );
 }
@@ -571,8 +946,9 @@ function AdminList({ title, items, icon, actions = [] }: { title: string; items:
     <div className="rounded-[8px] border border-line bg-white p-4">
       <h3 className="mb-3 flex items-center gap-2 font-semibold text-ink">{icon}{title}</h3>
       <div className="grid gap-2">
+        {!items.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">Пока нет записей.</p> : null}
         {items.map((item, index) => (
-          <div key={item} className="flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white px-4 py-3 text-sm">
+          <div key={`${item}-${index}`} className="flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white px-4 py-3 text-sm">
             <span>{item}</span>
             <div className="flex shrink-0 gap-2">
               {actions[index] ? <Link href={actions[index].href} className="rounded-[8px] bg-mist px-3 py-2 font-semibold text-slate-600">{actions[index].label}</Link> : null}
@@ -585,17 +961,116 @@ function AdminList({ title, items, icon, actions = [] }: { title: string; items:
   );
 }
 
-function downloadApplications(items: typeof applications) {
-  const header = ["Мероприятие", "Участник", "Класс", "Руководитель", "Контакт", "Статус"];
-  const rows = items.map((item) => [item.eventTitle, item.student, item.className, item.mentor, item.contact, item.status]);
-  const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";")).join("\n");
-  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+async function fetchApplications() {
+  const response = await fetch("/api/applications", { cache: "no-store" });
+  if (!response.ok) return [];
+  const data = await response.json() as ApplicationItem[];
+  return data;
+}
+
+async function updateApplication(application: ApplicationItem) {
+  const response = await fetch("/api/applications", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(application)
+  });
+  if (!response.ok) throw new Error("Не удалось обновить заявку");
+  return await response.json() as ApplicationItem[];
+}
+
+async function deleteApplication(id: string) {
+  const response = await fetch(`/api/applications?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!response.ok) throw new Error("Не удалось удалить заявку");
+  return await response.json() as ApplicationItem[];
+}
+
+function downloadApplicationsExcel(items: ApplicationItem[]) {
+  const header = ["Дата", "Мероприятие", "Тип", "Участник", "Класс", "Педагог", "Номинация", "Контакт", "Ссылка на работу", "Комментарий", "Статус", "Вложения"];
+  const rows = items.map((item) => [
+    formatDateTime(item.createdAt),
+    item.eventTitle,
+    eventTypeLabel(item.eventType),
+    item.student,
+    item.className,
+    item.mentor,
+    item.nomination,
+    item.contact,
+    item.workUrl,
+    item.comment,
+    statusLabel(item.status),
+    (item.files ?? []).map((file) => file.name).join(", ")
+  ]);
+  const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table>${[header, ...rows]
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(String(cell))}</td>`).join("")}</tr>`)
+    .join("")}</table></body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "applications.csv";
+  link.download = "applications.xls";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function formatDateTime(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("ru-RU");
+}
+
+function groupApplicationsByEvent(items: ApplicationItem[]) {
+  const groups = new Map<string, { title: string; type: ApplicationItem["eventType"]; count: number }>();
+  for (const item of items) {
+    const title = item.eventTitle || item.contest || "Мероприятие";
+    const current = groups.get(title);
+    if (current) {
+      current.count += 1;
+    } else {
+      groups.set(title, { title, type: item.eventType, count: 1 });
+    }
+  }
+  return Array.from(groups.values()).sort((first, second) => first.title.localeCompare(second.title, "ru"));
+}
+
+function applicationCountLabel(count: number) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (lastTwo >= 11 && lastTwo <= 14) return "заявок";
+  if (last === 1) return "заявка";
+  if (last >= 2 && last <= 4) return "заявки";
+  return "заявок";
+}
+
+function eventTypeLabel(type: ApplicationItem["eventType"]) {
+  if (type === "contest") return "Конкурс";
+  if (type === "action") return "Акция";
+  return "Мероприятие";
+}
+
+function statusLabel(status: ApplicationItem["status"]) {
+  const labels: Record<ApplicationItem["status"], string> = {
+    new: "Новая",
+    accepted: "Принята",
+    revision: "На доработке",
+    rejected: "Отклонена",
+    sent: "Отправлена"
+  };
+  return labels[status] ?? status;
+}
+
+function formatFileSize(size: number) {
+  if (!size) return "размер не указан";
+  if (size < 1024) return `${size} Б`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} КБ`;
+  return `${(size / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function migrateLocalAdminStore() {

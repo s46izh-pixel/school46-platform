@@ -10,11 +10,11 @@ import { HomeGreeting } from "@/components/home-greeting";
 import { HomeSectionGate } from "@/components/home-section-gate";
 import { TodayOverview } from "@/components/today-overview";
 import { UserPreferencesPanel } from "@/components/user-preferences-panel";
-import { applications, news } from "@/lib/mock-data";
+import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getScheduleChanges } from "@/lib/sheets";
 import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
-import { Bell, FileText, Trophy } from "lucide-react";
+import { Bell, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export default async function Home() {
@@ -52,16 +52,14 @@ export default async function Home() {
           </div>
           <div className="grid content-end gap-4">
             <TodayOverview events={events} lessons={lessons} changes={changes} />
-            <div className="grid grid-cols-2 gap-4">
+            <div>
               <Card>
                 <Trophy className="mb-4 text-coral" />
                 <p className="text-3xl font-semibold">{leaders.flatMap((item) => item.leaders).map((item) => item.className).join(", ")}</p>
                 <p className="text-sm text-slate-500">лидеры рейтинга</p>
-              </Card>
-              <Card>
-                <FileText className="mb-4 text-mint" />
-                <p className="text-3xl font-semibold">{applications.length}</p>
-                <p className="text-sm text-slate-500">новая заявка</p>
+                <Link href="/rating" className="mt-4 inline-flex rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-ink">
+                  Открыть рейтинг
+                </Link>
               </Card>
             </div>
           </div>

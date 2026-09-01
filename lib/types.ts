@@ -152,6 +152,14 @@ export type ApplicationItem = {
   comment: string;
   consent: boolean;
   status: ApplicationStatus;
+  files?: ApplicationAttachment[];
+};
+
+export type ApplicationAttachment = {
+  name: string;
+  size: number;
+  type: string;
+  dataUrl?: string;
 };
 
 export type UserPreferences = {

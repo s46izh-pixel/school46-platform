@@ -4,7 +4,6 @@ import { getDataset } from "@/lib/sheets";
 import type { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { CalendarDays, CheckCircle2, ClipboardList, FileText, ImageIcon, MapPin, Users } from "lucide-react";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -20,7 +19,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
       <section className="mx-auto grid max-w-6xl gap-5 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="grid gap-5">
           <div className="relative aspect-[16/9] overflow-hidden rounded-[8px] bg-slate-100 shadow-soft">
-          <Image src={item.cover} alt="" fill className="object-cover" />
+            <img src={item.cover} alt="" className="h-full w-full object-cover" />
           </div>
 
           <InfoSection icon={<ClipboardList />} title="Положение о мероприятии">

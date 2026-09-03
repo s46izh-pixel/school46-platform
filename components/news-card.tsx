@@ -1,13 +1,12 @@
 import { NewsItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { Tag } from "lucide-react";
-import Image from "next/image";
 
 export function NewsCard({ item }: { item: NewsItem }) {
   return (
     <article className="overflow-hidden rounded-[8px] border border-line bg-white shadow-sm">
       <div className="relative aspect-[16/10] bg-slate-100">
-        <Image src={item.photo} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+        <img src={item.photo} alt="" loading="lazy" className="h-full w-full object-cover" />
       </div>
       <div className="p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">

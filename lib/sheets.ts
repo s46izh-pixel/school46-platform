@@ -4,6 +4,8 @@ import type { EventItem, RatingItem, RatingSheet, ScheduleChange, ScheduleLesson
 
 export type DatasetName = keyof typeof sheetsConfig.sources;
 
+const SHEET_FETCH_TIMEOUT_MS = 5000;
+
 const mockDatasets = {
   news,
   events,
@@ -119,7 +121,10 @@ export async function readGoogleSheet(spreadsheetId: string, sheet: string) {
 
 async function readGoogleSheetCsv(spreadsheetId: string, sheet: string) {
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(SHEET_FETCH_TIMEOUT_MS)
+  });
   if (!response.ok) throw new Error("Google Sheets недоступны");
   return response.text();
 }

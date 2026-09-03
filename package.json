@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NEXT_DIST_DIR=.next-dev next dev",
-    "build": "next build && opennextjs-cloudflare build -s --skipWranglerConfigCheck && node scripts/prepare-sites-dist.mjs",
+    "build": "next build",
     "build:next": "cross-env NEXT_DIST_DIR=.next-build next build",
+    "build:sites": "cross-env NEXT_OUTPUT_STANDALONE=true next build && cross-env NEXT_OUTPUT_STANDALONE=true opennextjs-cloudflare build -s --skipWranglerConfigCheck && node scripts/prepare-sites-dist.mjs",
     "build:vercel": "next build",
-    "start": "node .next/standalone/server.js",
+    "start": "next start -H 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {

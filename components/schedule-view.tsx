@@ -4,7 +4,8 @@ import { classes, teacherNames } from "@/lib/mock-data";
 import { preferencesStorageKey, defaultPreferences } from "@/lib/storage";
 import { uniqueClasses } from "@/lib/class-utils";
 import { BellSchedule, ScheduleChange, ScheduleLesson, UserPreferences } from "@/lib/types";
-import { useEffect, useMemo, useState } from "react";
+import type { PointerEvent, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectField } from "./selectors";
 
 type ScheduleDisplayItem = ScheduleLesson | ScheduleChange;
@@ -281,7 +282,7 @@ function TeacherDaySchedule({ day, lessons, classes }: { day: string; lessons: S
   const gridColumns = `88px repeat(${classes.length}, minmax(190px, 1fr))`;
 
   return (
-    <div className="max-w-full overflow-x-auto rounded-[8px] border border-line bg-white">
+    <DraggableHorizontalScroll className="max-w-full overflow-x-auto rounded-[8px] border border-line bg-white">
       <div
         className="grid w-max min-w-full border-b border-line bg-white text-sm"
         style={{ gridTemplateColumns: gridColumns, width: `max(100%, ${gridWidth})` }}
@@ -323,7 +324,7 @@ function TeacherDaySchedule({ day, lessons, classes }: { day: string; lessons: S
           );
         })}
       </div>
-    </div>
+    </DraggableHorizontalScroll>
   );
 }
 
@@ -356,7 +357,7 @@ function TeacherChangeTable({ day, changes, classes }: { day: string; changes: S
   const gridColumns = `104px repeat(${classes.length}, minmax(190px, 1fr))`;
 
   return (
-    <div className="max-w-full overflow-x-auto rounded-[8px] border border-amber-200 bg-white">
+    <DraggableHorizontalScroll className="max-w-full overflow-x-auto rounded-[8px] border border-amber-200 bg-white">
       <div
         className="grid w-max min-w-full border-b border-amber-200 bg-amber-50 text-sm"
         style={{ gridTemplateColumns: gridColumns, width: `max(100%, ${gridWidth})` }}
@@ -398,6 +399,50 @@ function TeacherChangeTable({ day, changes, classes }: { day: string; changes: S
           </div>
         ))}
       </div>
+    </DraggableHorizontalScroll>
+  );
+}
+
+function DraggableHorizontalScroll({ className, children }: { className: string; children: ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef({ active: false, startX: 0, startScrollLeft: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    const element = scrollRef.current;
+    if (!element || element.scrollWidth <= element.clientWidth) return;
+    dragState.current = { active: true, startX: event.clientX, startScrollLeft: element.scrollLeft };
+    setIsDragging(true);
+    element.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent<HTMLDivElement>) {
+    const element = scrollRef.current;
+    if (!element || !dragState.current.active) return;
+    event.preventDefault();
+    element.scrollLeft = dragState.current.startScrollLeft - (event.clientX - dragState.current.startX);
+  }
+
+  function stopDrag(event: PointerEvent<HTMLDivElement>) {
+    const element = scrollRef.current;
+    if (!element || !dragState.current.active) return;
+    dragState.current.active = false;
+    setIsDragging(false);
+    if (element.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className={`${className} cursor-grab select-none ${isDragging ? "cursor-grabbing" : ""}`}
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={stopDrag}
+      onPointerCancel={stopDrag}
+      onPointerLeave={stopDrag}
+    >
+      {children}
     </div>
   );
 }

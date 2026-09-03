@@ -220,30 +220,14 @@ export function TopControls() {
             </div>
 
             <div className="grid gap-5">
-              <section className="rounded-[8px] border border-line bg-white p-4">
-                <h3 className="font-semibold text-ink">Полезные ссылки</h3>
-                <div className="mt-3 grid gap-2">
-                  {usefulLinks.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className="focus-ring rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-ink"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </section>
-
               <section>
-                <h3 className="mb-3 font-semibold text-ink">Дизайн интерфейса</h3>
-                <div className="grid grid-cols-2 gap-2">
+                <h3 className="mb-2 font-semibold text-ink">Дизайн интерфейса</h3>
+                <div className="grid grid-cols-3 gap-1.5">
                   {designs.map((design) => (
                     <button
                       key={design.id}
                       onClick={() => updateDraft({ design: design.id })}
-                      className={`rounded-[8px] border px-3 py-3 text-sm font-semibold transition hover:-translate-y-0.5 ${draftPrefs.design === design.id ? "border-apple bg-[var(--accent-soft)] text-apple" : "border-line bg-white text-slate-600"}`}
+                      className={`rounded-[8px] border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${draftPrefs.design === design.id ? "border-apple bg-[var(--accent-soft)] text-apple" : "border-line bg-white text-slate-600"}`}
                     >
                       {design.title}
                     </button>
@@ -326,6 +310,22 @@ export function TopControls() {
                 <Check size={17} />
                 {saved ? "Сохранено" : "Сохранить"}
               </button>
+
+              <section className="rounded-[8px] border border-line bg-white p-4">
+                <h3 className="font-semibold text-ink">Полезные ссылки</h3>
+                <div className="mt-3 grid gap-2">
+                  {usefulLinks.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className="focus-ring rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-ink"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             </div>
           </aside>
         </div>,

@@ -4,7 +4,7 @@ import { classes } from "@/lib/mock-data";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import { uniqueClasses } from "@/lib/class-utils";
 import type { ScheduleLesson, UserPreferences } from "@/lib/types";
-import { BarChart3, Check, Moon, Settings, Sun, X } from "lucide-react";
+import { BarChart3, Check, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -51,6 +51,7 @@ export function TopControls() {
       const parsed = normalizePreferences({ ...defaultPreferences, ...JSON.parse(saved) }, savedClass);
       const nextPrefs = {
         ...parsed,
+        theme: "light" as const,
         selectedClass: parsed.selectedClass,
         groupName: parsed.role === "teacher" ? formatClassSelection(parsed.selectedClasses ?? [parsed.selectedClass]) : savedClass ?? parsed.groupName
       };
@@ -87,7 +88,7 @@ export function TopControls() {
     if (!mounted) return;
     localStorage.setItem(preferencesStorageKey, JSON.stringify(prefs));
     localStorage.setItem("school46.class", prefs.selectedClass);
-    document.documentElement.dataset.theme = prefs.theme;
+    document.documentElement.dataset.theme = "light";
     document.documentElement.dataset.design = prefs.design;
     document.documentElement.removeAttribute("data-rtx");
     window.dispatchEvent(new CustomEvent("school46.preferences-updated", { detail: prefs }));
@@ -109,10 +110,6 @@ export function TopControls() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [open]);
-
-  function update(value: Partial<UserPreferences>) {
-    setPrefs((current) => ({ ...current, ...value }));
-  }
 
   function updateDraft(value: Partial<UserPreferences>) {
     setSaved(false);
@@ -176,14 +173,6 @@ export function TopControls() {
   return (
     <>
       <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-        <button
-          onClick={() => update({ theme: prefs.theme === "light" ? "dark" : "light" })}
-          className="focus-ring flex h-10 items-center justify-center gap-2 rounded-[8px] border border-line bg-white px-3 text-ink shadow-sm transition hover:-translate-y-0.5"
-          aria-label="Переключить тему"
-        >
-          {prefs.theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-          <span className="hidden text-sm font-semibold xl:inline">Тема</span>
-        </button>
         <Link
           href="/rating"
           className="focus-ring flex h-10 items-center justify-center gap-2 rounded-[8px] border border-line bg-white px-3 text-ink shadow-sm transition hover:-translate-y-0.5"
@@ -340,6 +329,7 @@ function normalizePreferences(preferences: UserPreferences, savedClass?: string 
   const selectedClasses = normalizeSelectedClasses(preferences.selectedClasses, selectedClass);
   return {
     ...preferences,
+    theme: "light",
     selectedClass: selectedClasses[0] ?? selectedClass,
     selectedClasses,
     groupName: preferences.role === "teacher" ? formatClassSelection(selectedClasses) : selectedClass

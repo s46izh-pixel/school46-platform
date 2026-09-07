@@ -337,8 +337,8 @@ function EventList({ items, highlightedIds, onSelectEvent }: { items: EventItem[
 
 function EventDetailsModal({ item, onClose }: { item: EventItem; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/35 px-4 backdrop-blur-sm" onClick={onClose}>
-      <section className="w-full max-w-xl rounded-[8px] border border-line bg-white p-5 shadow-soft" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/35 px-3 backdrop-blur-sm sm:px-4" onClick={onClose}>
+      <section className="max-h-[calc(100dvh-24px)] w-full max-w-xl overflow-y-auto rounded-[8px] border border-line bg-white p-4 shadow-soft sm:max-h-[calc(100dvh-32px)] sm:p-5" onClick={(event) => event.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-apple">{item.category}</p>
@@ -366,10 +366,10 @@ function EventDetailsModal({ item, onClose }: { item: EventItem; onClose: () => 
 
 function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[24px_170px_1fr] items-start gap-2 rounded-[8px] bg-mist px-3 py-2">
+    <div className="grid grid-cols-[22px_minmax(0,1fr)] items-start gap-x-2 gap-y-1 rounded-[8px] bg-mist px-3 py-2 sm:grid-cols-[24px_150px_minmax(0,1fr)]">
       <span className="text-apple">{icon}</span>
-      <span className="font-semibold text-slate-500">{label}</span>
-      <span className="whitespace-pre-line text-ink">{value}</span>
+      <span className="min-w-0 font-semibold text-slate-500">{label}</span>
+      <span className="col-start-2 min-w-0 whitespace-pre-line break-words text-ink sm:col-start-auto">{value}</span>
     </div>
   );
 }

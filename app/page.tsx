@@ -1,6 +1,6 @@
-import { EventCard } from "@/components/event-card";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { HomeSectionGate } from "@/components/home-section-gate";
 import { HomeNewsGrid } from "@/components/home-news-grid";
 import { MobileNav } from "@/components/mobile-nav";
 import { RatingTable } from "@/components/rating-table";
@@ -9,22 +9,18 @@ import { ScheduleView } from "@/components/schedule-view";
 import { HomeGreeting } from "@/components/home-greeting";
 import { TodayOverview } from "@/components/today-overview";
 import { UserPreferencesPanel } from "@/components/user-preferences-panel";
-import { readAdminStore } from "@/lib/admin-store";
 import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
-import { defaultHomeSectionSettings, type HomeSectionId } from "@/lib/home-sections";
 import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getScheduleChanges } from "@/lib/sheets";
-import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
+import type { BellSchedule, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
 import { Bell, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function Home() {
-  const homeSections = await getHomeSections();
-  const [events, lessons, bells, rating, changes] = await Promise.all([
-    getDataset("events") as Promise<EventItem[]>,
+  const [lessons, bells, rating, changes] = await Promise.all([
     getDataset("schedule") as Promise<ScheduleLesson[]>,
     getDataset("bells") as Promise<BellSchedule[]>,
     getDataset("rating") as Promise<RatingItem[]>,
@@ -56,8 +52,8 @@ export default async function Home() {
             </div>
           </div>
           <div className="grid content-end gap-4">
-            <TodayOverview events={events} lessons={lessons} changes={changes} />
-            <div>
+            <TodayOverview events={[]} lessons={lessons} changes={changes} />
+            <HomeSectionGate id="rating">
               <Card>
                 <Trophy className="mb-4 text-coral" />
                 <p className="text-3xl font-semibold">{leaders.flatMap((item) => item.leaders).map((item) => item.className).join(", ")}</p>
@@ -66,59 +62,45 @@ export default async function Home() {
                   Открыть рейтинг
                 </Link>
               </Card>
-            </div>
+            </HomeSectionGate>
           </div>
         </section>
 
-        {homeSections.news ? (
+        <HomeSectionGate id="news">
           <section className="bg-white py-12" id="news">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Лента школы" title="Последние новости" />
               <HomeNewsGrid items={publishedNews} />
             </div>
           </section>
-        ) : null}
+        </HomeSectionGate>
 
-        {homeSections.schedule ? (
+        <HomeSectionGate id="schedule">
           <section className="py-12" id="schedule">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Учебный день" title="Расписание уроков и звонков" />
               <ScheduleView lessons={lessons} bells={bells} changes={changes} />
             </div>
           </section>
-        ) : null}
+        </HomeSectionGate>
 
-        {homeSections.personalization ? (
+        <HomeSectionGate id="personalization">
           <section className="bg-white py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Настройки" title="Персонализация пользователя" />
               <UserPreferencesPanel />
             </div>
           </section>
-        ) : null}
+        </HomeSectionGate>
 
-        {homeSections.rating ? (
+        <HomeSectionGate id="rating">
           <section className="bg-white py-12" id="rating">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Активность классов" title="Рейтинг и достижения" />
               <RatingTable items={rating} />
             </div>
           </section>
-        ) : null}
-
-        {homeSections.events ? (
-          <section className="py-12" id="events">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <SectionTitle
-                eyebrow="Календарь"
-                title="Ближайшие события, акции и конкурсы"
-              />
-              <div className="grid gap-5 md:grid-cols-3">
-                {events.map((item) => <EventCard key={item.id} item={item} />)}
-              </div>
-            </div>
-          </section>
-        ) : null}
+        </HomeSectionGate>
 
         <section className="bg-ink py-12 text-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
@@ -139,13 +121,4 @@ export default async function Home() {
       <MobileNav />
     </>
   );
-}
-
-async function getHomeSections() {
-  try {
-    const store = await readAdminStore();
-    return { ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>;
-  } catch {
-    return defaultHomeSectionSettings();
-  }
 }

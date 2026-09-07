@@ -4,8 +4,7 @@ export const homeSections = [
   { id: "news", title: "Последние новости", description: "Лента школы на главной странице" },
   { id: "schedule", title: "Расписание уроков и звонков", description: "Блок расписания и звонков" },
   { id: "personalization", title: "Персонализация пользователя", description: "Настройки класса, педагога и избранных разделов" },
-  { id: "rating", title: "Рейтинг и достижения", description: "Таблица активности классов" },
-  { id: "events", title: "Ближайшие события", description: "События, акции и конкурсы" }
+  { id: "rating", title: "Рейтинг и достижения", description: "Таблица активности классов" }
 ] as const;
 
 export type HomeSectionId = typeof homeSections[number]["id"];

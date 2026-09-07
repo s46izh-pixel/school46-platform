@@ -33,7 +33,7 @@ export async function getPublicManualEvent(slug: string) {
 
 async function fetchJson<T>(url: string, fallback?: T): Promise<T> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error("Request failed");
     return await response.json() as T;
   } catch {

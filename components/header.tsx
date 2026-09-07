@@ -17,7 +17,7 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl flex-nowrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 shrink-0 items-center gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[8px] bg-ink">
-            <Image src="/logo-46.png" alt="" width={40} height={40} className="h-full w-full object-cover" priority />
+            <Image src="/logo-46-white.png" alt="" width={40} height={40} className="h-full w-full object-cover" priority />
           </span>
           <span className="min-w-0">
             <span className="hidden text-sm text-slate-500 xl:block">Цифровая платформа</span>

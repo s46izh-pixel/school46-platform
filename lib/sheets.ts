@@ -1,5 +1,5 @@
 import { actions, applications, bells, events, lessons, news, rating } from "./mock-data";
-import { DATA_REVALIDATE_SECONDS } from "./cache";
+import { DATA_REVALIDATE_SECONDS, SCHEDULE_REVALIDATE_SECONDS } from "./cache";
 import { sheetsConfig } from "./sheets-config";
 import type { EventItem, RatingItem, RatingSheet, ScheduleChange, ScheduleLesson } from "./types";
 
@@ -41,8 +41,8 @@ export async function getScheduleLessons(): Promise<ScheduleLesson[]> {
 
   try {
     const [primaryCsv, secondaryCsv] = await Promise.all([
-      readGoogleSheetCsv(source.spreadsheetId, "1-4 классы"),
-      readGoogleSheetCsv(source.spreadsheetId, "5-11 классы")
+      readGoogleSheetCsv(source.spreadsheetId, "1-4 классы", SCHEDULE_REVALIDATE_SECONDS),
+      readGoogleSheetCsv(source.spreadsheetId, "5-11 классы", SCHEDULE_REVALIDATE_SECONDS)
     ]);
     return [
       ...mapScheduleMatrix(parseCsv(primaryCsv), "primary"),
@@ -58,7 +58,7 @@ export async function getScheduleChanges(): Promise<ScheduleChange[]> {
   if (!source.spreadsheetId) return [];
 
   try {
-    const csv = await readGoogleSheetCsv(source.spreadsheetId, "Изменения");
+    const csv = await readGoogleSheetCsv(source.spreadsheetId, "Изменения", SCHEDULE_REVALIDATE_SECONDS);
     return mapScheduleMatrix(parseCsv(csv), "changes").map((lesson, index) => ({
       id: `change-${index + 1}`,
       className: lesson.className,
@@ -120,10 +120,10 @@ export async function readGoogleSheet(spreadsheetId: string, sheet: string) {
   return csvToObjects(csv);
 }
 
-async function readGoogleSheetCsv(spreadsheetId: string, sheet: string) {
+async function readGoogleSheetCsv(spreadsheetId: string, sheet: string, revalidate = DATA_REVALIDATE_SECONDS) {
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
   const response = await fetch(url, {
-    next: { revalidate: DATA_REVALIDATE_SECONDS },
+    next: { revalidate },
     signal: AbortSignal.timeout(SHEET_FETCH_TIMEOUT_MS)
   });
   if (!response.ok) throw new Error("Google Sheets недоступны");

@@ -1,7 +1,7 @@
 "use client";
 
-import { getAdminStore } from "@/lib/admin-store-client";
 import { defaultHomeSectionSettings, type HomeSectionId } from "@/lib/home-sections";
+import { getPublicHomeSections } from "@/lib/public-admin-store-client";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -10,8 +10,8 @@ export function HomeSectionGate({ id, children }: { id: HomeSectionId; children:
 
   useEffect(() => {
     function loadSettings() {
-      getAdminStore()
-        .then((store) => setSettings({ ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>))
+      getPublicHomeSections()
+        .then((homeSections) => setSettings({ ...defaultHomeSectionSettings(), ...homeSections } as Record<HomeSectionId, boolean>))
         .catch(() => setSettings(defaultHomeSectionSettings()));
     }
 

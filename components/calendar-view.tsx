@@ -3,7 +3,7 @@
 import { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
-import { getAdminStore } from "@/lib/admin-store-client";
+import { getPublicEventSettings } from "@/lib/public-admin-store-client";
 import { CalendarDays, Clock, FileText, ListFilter, MapPin, Users, X } from "lucide-react";
 import Link from "next/link";
 import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
@@ -74,10 +74,10 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
 
   useEffect(() => {
     function syncDetailEvents() {
-      getAdminStore()
-        .then((store) => {
-          setManualItems(readManualEventPages(store.eventPages as ManualEventPageDraft[]));
-          setCalendarTemplateItems(readPublishedCalendarTemplates(items, store.calendarTemplateVisibility));
+      getPublicEventSettings()
+        .then((settings) => {
+          setManualItems(readManualEventPages(settings.eventPages as ManualEventPageDraft[]));
+          setCalendarTemplateItems(readPublishedCalendarTemplates(items, settings.calendarTemplateVisibility));
         })
         .catch(() => {
           setManualItems([]);

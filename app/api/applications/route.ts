@@ -1,15 +1,16 @@
 import { cookieName, verifyAdminSession } from "@/lib/admin-auth";
 import { readAdminStore, updateAdminStore } from "@/lib/admin-store";
+import { noStoreHeaders } from "@/lib/cache";
 import type { ApplicationItem, EventItem } from "@/lib/types";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   if (!await verifyAdminSession(cookieFromRequest(request, cookieName))) {
-    return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401 });
+    return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401, headers: noStoreHeaders });
   }
 
   const store = await readAdminStore();
-  return NextResponse.json(store.applications);
+  return NextResponse.json(store.applications, { headers: noStoreHeaders });
 }
 
 export async function POST(request: Request) {
@@ -42,21 +43,21 @@ export async function POST(request: Request) {
     const store = await readAdminStore();
     await updateAdminStore({ applications: [application, ...store.applications] });
 
-    return NextResponse.json(application, { status: 201 });
+    return NextResponse.json(application, { status: 201, headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ message: "Не удалось сохранить заявку." }, { status: 500 });
+    return NextResponse.json({ message: "Не удалось сохранить заявку." }, { status: 500, headers: noStoreHeaders });
   }
 }
 
 export async function PATCH(request: Request) {
   try {
     if (!await verifyAdminSession(cookieFromRequest(request, cookieName))) {
-      return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401 });
+      return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401, headers: noStoreHeaders });
     }
 
     const body = await request.json() as Record<string, unknown>;
     const id = pickString(body, ["id", "applicationId"]);
-    if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400 });
+    if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400, headers: noStoreHeaders });
 
     const store = await readAdminStore();
     const nextApplications = store.applications.map((item) => {
@@ -75,26 +76,26 @@ export async function PATCH(request: Request) {
     });
 
     const saved = await updateAdminStore({ applications: nextApplications });
-    return NextResponse.json(saved.applications);
+    return NextResponse.json(saved.applications, { headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ message: "Не удалось обновить заявку." }, { status: 500 });
+    return NextResponse.json({ message: "Не удалось обновить заявку." }, { status: 500, headers: noStoreHeaders });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     if (!await verifyAdminSession(cookieFromRequest(request, cookieName))) {
-      return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401 });
+      return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401, headers: noStoreHeaders });
     }
 
     const id = new URL(request.url).searchParams.get("id")?.trim();
-    if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400 });
+    if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400, headers: noStoreHeaders });
 
     const store = await readAdminStore();
     const saved = await updateAdminStore({ applications: store.applications.filter((item) => item.id !== id && item.applicationId !== id) });
-    return NextResponse.json(saved.applications);
+    return NextResponse.json(saved.applications, { headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ message: "Не удалось удалить заявку." }, { status: 500 });
+    return NextResponse.json({ message: "Не удалось удалить заявку." }, { status: 500, headers: noStoreHeaders });
   }
 }
 

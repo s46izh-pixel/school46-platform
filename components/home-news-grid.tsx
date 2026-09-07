@@ -1,7 +1,7 @@
 "use client";
 
-import { getAdminStore } from "@/lib/admin-store-client";
 import type { NewsVisibility } from "@/lib/news-visibility";
+import { getPublicNewsSettings } from "@/lib/public-admin-store-client";
 import type { NewsItem } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 import { NewsCard } from "./news-card";
@@ -12,10 +12,10 @@ export function HomeNewsGrid({ items, limit = 3 }: { items: NewsItem[]; limit?: 
 
   useEffect(() => {
     function loadNewsSettings() {
-      getAdminStore()
-        .then((store) => {
-          setVisibility(store.newsVisibility as NewsVisibility);
-          setOverrides(store.newsOverrides as Record<string, NewsItem>);
+      getPublicNewsSettings()
+        .then((settings) => {
+          setVisibility(settings.newsVisibility as NewsVisibility);
+          setOverrides(settings.newsOverrides as Record<string, NewsItem>);
         })
         .catch(() => {
           setVisibility({});

@@ -1,10 +1,10 @@
 import { PageHero, PageShell } from "@/components/page-shell";
 import { ScheduleView } from "@/components/schedule-view";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getDataset, getScheduleChanges } from "@/lib/sheets";
 import type { BellSchedule, ScheduleChange, ScheduleLesson } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function SchedulePage() {
   const [lessons, bells, changes] = await Promise.all([

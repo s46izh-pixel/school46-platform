@@ -1,8 +1,8 @@
 "use client";
 
 import { PageShell } from "@/components/page-shell";
-import { getAdminStore } from "@/lib/admin-store-client";
 import { news } from "@/lib/mock-data";
+import { getPublicNewsSettings } from "@/lib/public-admin-store-client";
 import type { NewsItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -18,10 +18,10 @@ export default function NewsItemPage({ params }: { params: { slug: string } }) {
         setItem(null);
         return;
       }
-      getAdminStore()
-        .then((store) => {
-          const nextItem = { ...source, ...store.newsOverrides[source.slug] };
-          setItem(nextItem.status === "published" && store.newsVisibility[nextItem.slug] !== false ? nextItem : null);
+      getPublicNewsSettings()
+        .then((settings) => {
+          const nextItem = { ...source, ...settings.newsOverrides[source.slug] };
+          setItem(nextItem.status === "published" && settings.newsVisibility[nextItem.slug] !== false ? nextItem : null);
         })
         .catch(() => setItem(source.status === "published" ? source : null));
     }

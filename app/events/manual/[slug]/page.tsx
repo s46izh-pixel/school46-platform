@@ -2,7 +2,7 @@
 
 import { ApplicationForm } from "@/components/application-form";
 import { PageHero, PageShell } from "@/components/page-shell";
-import { getAdminStore } from "@/lib/admin-store-client";
+import { getPublicManualEvent } from "@/lib/public-admin-store-client";
 import type { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { CalendarDays, CheckCircle2, ClipboardList, FileText, ImageIcon, MapPin, Users } from "lucide-react";
@@ -73,8 +73,8 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
   const slug = decodeURIComponent(params.slug);
 
   useEffect(() => {
-    getAdminStore()
-      .then((store) => setDraft(findManualDraft(store.eventPages as ManualEventPageDraft[], slug)))
+    getPublicManualEvent(slug)
+      .then((event) => setDraft(event as ManualEventPageDraft | null))
       .catch(() => setDraft(null));
   }, [slug]);
 
@@ -166,10 +166,6 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
       </section>
     </PageShell>
   );
-}
-
-function findManualDraft(drafts: ManualEventPageDraft[], slug: string) {
-  return Array.isArray(drafts) ? drafts.find((item) => item.slug === slug) ?? null : null;
 }
 
 function manualDraftToEvent(item: ManualEventPageDraft): EventItem {

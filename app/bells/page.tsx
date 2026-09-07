@@ -1,6 +1,9 @@
 import { PageHero, PageShell } from "@/components/page-shell";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getDataset } from "@/lib/sheets";
 import type { BellSchedule } from "@/lib/types";
+
+export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function BellsPage() {
   const bells = (await getDataset("bells")) as BellSchedule[];

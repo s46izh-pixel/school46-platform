@@ -1,11 +1,14 @@
 import { ApplicationForm } from "@/components/application-form";
 import { PageHero, PageShell } from "@/components/page-shell";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getDataset } from "@/lib/sheets";
 import type { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { CalendarDays, CheckCircle2, ClipboardList, FileText, ImageIcon, MapPin, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+
+export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function EventPage({ params }: { params: { slug: string } }) {
   const events = (await getDataset("events")) as EventItem[];

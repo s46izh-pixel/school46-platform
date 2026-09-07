@@ -1,4 +1,5 @@
 import { actions, applications, bells, events, lessons, news, rating } from "./mock-data";
+import { DATA_REVALIDATE_SECONDS } from "./cache";
 import { sheetsConfig } from "./sheets-config";
 import type { EventItem, RatingItem, RatingSheet, ScheduleChange, ScheduleLesson } from "./types";
 
@@ -122,7 +123,7 @@ export async function readGoogleSheet(spreadsheetId: string, sheet: string) {
 async function readGoogleSheetCsv(spreadsheetId: string, sheet: string) {
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
   const response = await fetch(url, {
-    cache: "no-store",
+    next: { revalidate: DATA_REVALIDATE_SECONDS },
     signal: AbortSignal.timeout(SHEET_FETCH_TIMEOUT_MS)
   });
   if (!response.ok) throw new Error("Google Sheets недоступны");

@@ -1,8 +1,8 @@
 "use client";
 
-import { getAdminStore } from "@/lib/admin-store-client";
 import { categories, classes } from "@/lib/mock-data";
 import type { NewsVisibility } from "@/lib/news-visibility";
+import { getPublicNewsSettings } from "@/lib/public-admin-store-client";
 import { NewsItem } from "@/lib/types";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -21,10 +21,10 @@ export function NewsBrowser({ items }: { items: NewsItem[] }) {
 
   useEffect(() => {
     function loadNewsSettings() {
-      getAdminStore()
-        .then((store) => {
-          setVisibility(store.newsVisibility as NewsVisibility);
-          setOverrides(store.newsOverrides as Record<string, NewsItem>);
+      getPublicNewsSettings()
+        .then((settings) => {
+          setVisibility(settings.newsVisibility as NewsVisibility);
+          setOverrides(settings.newsOverrides as Record<string, NewsItem>);
         })
         .catch(() => {
           setVisibility({});

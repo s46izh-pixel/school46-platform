@@ -1,12 +1,13 @@
 import { cookieName, verifyAdminSession } from "@/lib/admin-auth";
 import { readAdminStore, updateAdminStore } from "@/lib/admin-store";
+import { noStoreHeaders } from "@/lib/cache";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    return NextResponse.json(publicAdminStore(await readAdminStore()));
+    return NextResponse.json(publicAdminStore(await readAdminStore()), { headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ eventPages: [], calendarTemplateVisibility: {}, newsVisibility: {}, newsOverrides: {}, homeSections: {} });
+    return NextResponse.json({ eventPages: [], calendarTemplateVisibility: {}, newsVisibility: {}, newsOverrides: {}, homeSections: {} }, { headers: noStoreHeaders });
   }
 }
 
@@ -17,9 +18,9 @@ export async function PATCH(request: Request) {
     }
     const patch = await request.json();
     delete patch.adminPasswordHash;
-    return NextResponse.json(publicAdminStore(await updateAdminStore(patch)));
+    return NextResponse.json(publicAdminStore(await updateAdminStore(patch)), { headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ message: "Не удалось сохранить настройки. Попробуйте уменьшить изображение или повторить позже." }, { status: 500 });
+    return NextResponse.json({ message: "Не удалось сохранить настройки. Попробуйте уменьшить изображение или повторить позже." }, { status: 500, headers: noStoreHeaders });
   }
 }
 

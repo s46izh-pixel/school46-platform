@@ -1,7 +1,10 @@
 import { CalendarView } from "@/components/calendar-view";
 import { PageHero, PageShell } from "@/components/page-shell";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getDataset, getMonthlyEventNotes } from "@/lib/sheets";
 import type { EventItem } from "@/lib/types";
+
+export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function EventsPage() {
   const [events, monthlyItems] = await Promise.all([

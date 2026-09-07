@@ -7,9 +7,11 @@ import { RatingTable } from "@/components/rating-table";
 import { Card, SectionTitle } from "@/components/card";
 import { ScheduleView } from "@/components/schedule-view";
 import { HomeGreeting } from "@/components/home-greeting";
-import { HomeSectionGate } from "@/components/home-section-gate";
 import { TodayOverview } from "@/components/today-overview";
 import { UserPreferencesPanel } from "@/components/user-preferences-panel";
+import { readAdminStore } from "@/lib/admin-store";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
+import { defaultHomeSectionSettings, type HomeSectionId } from "@/lib/home-sections";
 import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getScheduleChanges } from "@/lib/sheets";
@@ -17,7 +19,10 @@ import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesso
 import { Bell, Trophy } from "lucide-react";
 import Link from "next/link";
 
+export const revalidate = DATA_REVALIDATE_SECONDS;
+
 export default async function Home() {
+  const homeSections = await getHomeSections();
   const [events, lessons, bells, rating, changes] = await Promise.all([
     getDataset("events") as Promise<EventItem[]>,
     getDataset("schedule") as Promise<ScheduleLesson[]>,
@@ -65,43 +70,43 @@ export default async function Home() {
           </div>
         </section>
 
-        <HomeSectionGate id="news">
+        {homeSections.news ? (
           <section className="bg-white py-12" id="news">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Лента школы" title="Последние новости" />
               <HomeNewsGrid items={publishedNews} />
             </div>
           </section>
-        </HomeSectionGate>
+        ) : null}
 
-        <HomeSectionGate id="schedule">
+        {homeSections.schedule ? (
           <section className="py-12" id="schedule">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Учебный день" title="Расписание уроков и звонков" />
               <ScheduleView lessons={lessons} bells={bells} changes={changes} />
             </div>
           </section>
-        </HomeSectionGate>
+        ) : null}
 
-        <HomeSectionGate id="personalization">
+        {homeSections.personalization ? (
           <section className="bg-white py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Настройки" title="Персонализация пользователя" />
               <UserPreferencesPanel />
             </div>
           </section>
-        </HomeSectionGate>
+        ) : null}
 
-        <HomeSectionGate id="rating">
+        {homeSections.rating ? (
           <section className="bg-white py-12" id="rating">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle eyebrow="Активность классов" title="Рейтинг и достижения" />
               <RatingTable items={rating} />
             </div>
           </section>
-        </HomeSectionGate>
+        ) : null}
 
-        <HomeSectionGate id="events">
+        {homeSections.events ? (
           <section className="py-12" id="events">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SectionTitle
@@ -113,7 +118,7 @@ export default async function Home() {
               </div>
             </div>
           </section>
-        </HomeSectionGate>
+        ) : null}
 
         <section className="bg-ink py-12 text-white">
           <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
@@ -134,4 +139,13 @@ export default async function Home() {
       <MobileNav />
     </>
   );
+}
+
+async function getHomeSections() {
+  try {
+    const store = await readAdminStore();
+    return { ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>;
+  } catch {
+    return defaultHomeSectionSettings();
+  }
 }

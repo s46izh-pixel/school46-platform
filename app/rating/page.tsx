@@ -1,12 +1,12 @@
 import { PageHero, PageShell } from "@/components/page-shell";
 import { RatingSheetTable } from "@/components/rating-sheet-table";
+import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getRatingSheetTable } from "@/lib/sheets";
 import type { RatingItem } from "@/lib/types";
 import { Award, Medal, Trophy } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function RatingPage() {
   const [rating, ratingSheet] = await Promise.all([

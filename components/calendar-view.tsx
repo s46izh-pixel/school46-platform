@@ -4,8 +4,7 @@ import { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import { getPublicEventSettings } from "@/lib/public-admin-store-client";
-import { CalendarDays, Clock, FileText, ListFilter, MapPin, Users, X } from "lucide-react";
-import Link from "next/link";
+import { CalendarDays, Clock, ListFilter, MapPin, Users, X } from "lucide-react";
 import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
 import { SelectField } from "./selectors";
 
@@ -48,10 +47,10 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
   const [manualItems, setManualItems] = useState<EventItem[]>([]);
   const [calendarTemplateItems, setCalendarTemplateItems] = useState<EventItem[]>([]);
   const detailItems = useMemo(() => [...manualItems, ...calendarTemplateItems], [calendarTemplateItems, manualItems]);
-  const filterOptionItems = useMemo(() => [...items, ...detailItems], [detailItems, items]);
+  const calendarItems = useMemo(() => [...items, ...detailItems], [detailItems, items]);
   const classCategoryOptions = useMemo(
-    () => Array.from(new Set(filterOptionItems.flatMap((item) => splitClassCategories(item.classCategory)))),
-    [filterOptionItems]
+    () => Array.from(new Set(calendarItems.flatMap((item) => splitClassCategories(item.classCategory)))),
+    [calendarItems]
   );
   const classFilterOptions = useMemo(
     () => ["Все", ...(profileCategories.length > 1 ? ["Мои классы"] : []), ...classCategoryOptions],
@@ -95,21 +94,12 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
 
   const filtered = useMemo(
     () =>
-      items.filter((item) => {
+      calendarItems.filter((item) => {
         const byClassCategory = classCategoryFilter === "Все" || matchesClassCategoryFilter(item.classCategory, classCategoryFilter, profileCategories);
         const byCategory = categoryFilter === "Все" || item.category === categoryFilter;
         return byClassCategory && byCategory;
       }),
-    [categoryFilter, classCategoryFilter, items, profileCategories]
-  );
-  const filteredManualItems = useMemo(
-    () =>
-      detailItems.filter((item) => {
-        const byClassCategory = classCategoryFilter === "Все" || matchesClassCategoryFilter(item.classCategory, classCategoryFilter, profileCategories);
-        const byCategory = categoryFilter === "Все" || item.category === categoryFilter;
-        return byClassCategory && byCategory;
-      }),
-    [categoryFilter, classCategoryFilter, detailItems, profileCategories]
+    [calendarItems, categoryFilter, classCategoryFilter, profileCategories]
   );
   const upcoming = useMemo(() => {
     const today = toDateKey(new Date());
@@ -218,50 +208,6 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
           </div>
         </section>
       ) : null}
-      <section className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-apple">Материалы</p>
-            <h3 className="text-2xl font-semibold text-ink">Афиша подробностей</h3>
-          </div>
-          <span className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-500">{filteredManualItems.length} доступно</span>
-        </div>
-        {filteredManualItems.length ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filteredManualItems.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-[8px] border border-line bg-white shadow-sm">
-              <Link href={isManualEvent(item) ? `/events/manual/${item.slug}` : `/events/${item.slug}`} className="block">
-                {item.cover ? (
-                  <div className="aspect-square overflow-hidden bg-mist">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.cover} alt="" className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
-                  </div>
-                ) : (
-                  <div className="grid aspect-square place-items-center bg-mist text-apple">
-                    <FileText size={42} />
-                  </div>
-                )}
-              </Link>
-              <div className="grid gap-3 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-apple">{formatDate(item.date)}</p>
-                  <span className="rounded-[8px] px-2 py-1 text-xs font-semibold" style={eventColorStyle(item)}>{item.category}</span>
-                </div>
-                <div>
-                  <h4 className="text-lg font-semibold leading-6 text-ink">{item.title}</h4>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{[item.time, item.place, item.participants].filter(Boolean).join(" · ")}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href={isManualEvent(item) ? `/events/manual/${item.slug}` : `/events/${item.slug}`} className="rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white">Открыть страницу</Link>
-                </div>
-              </div>
-            </article>
-          ))}
-          </div>
-        ) : (
-          <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">Пока нет вручную созданных страниц мероприятий. Создайте событие в админке, и оно появится здесь.</p>
-        )}
-      </section>
       {selectedEvent ? <EventDetailsModal item={selectedEvent} onClose={() => setSelectedEvent(null)} /> : null}
     </div>
   );
@@ -628,8 +574,4 @@ function splitManualFields(value: string | undefined) {
 function validDateKey(value: string | undefined) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
   return value;
-}
-
-function isManualEvent(item: EventItem) {
-  return item.id.startsWith("manual-");
 }

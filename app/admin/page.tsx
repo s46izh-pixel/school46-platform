@@ -59,7 +59,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!unlocked) return;
     migrateLocalAdminStore()
-      .then(getAdminStore)
+      .then(() => getAdminStore())
       .then((store) => setEventPageDrafts(store.eventPages as EventPageDraft[]))
       .catch(() => setEventPageDrafts([]));
   }, [active, unlocked]);
@@ -670,7 +670,7 @@ function SettingsPanel() {
   const [homeSettingsMessage, setHomeSettingsMessage] = useState("");
 
   useEffect(() => {
-    getAdminStore()
+    getAdminStore({ requireServer: true })
       .then((store) => {
         const next = { ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>;
         setHomeSettings(next);
@@ -680,6 +680,7 @@ function SettingsPanel() {
         const defaults = defaultHomeSectionSettings();
         setHomeSettings(defaults);
         setSavedHomeSettings(defaults);
+        setHomeSettingsMessage("Не удалось загрузить настройки с сервера.");
       });
   }, []);
 
@@ -692,10 +693,17 @@ function SettingsPanel() {
   }
 
   async function saveHomeSections() {
-    await patchAdminStore({ homeSections: homeSettings });
-    setSavedHomeSettings(homeSettings);
-    setHomeSettingsMessage("Настройки блоков сохранены.");
-    window.dispatchEvent(new CustomEvent("school46.home-sections-updated"));
+    setHomeSettingsMessage("Сохраняю настройки...");
+    try {
+      const saved = await patchAdminStore({ homeSections: homeSettings }, { requireServer: true });
+      const next = { ...defaultHomeSectionSettings(), ...saved.homeSections } as Record<HomeSectionId, boolean>;
+      setHomeSettings(next);
+      setSavedHomeSettings(next);
+      setHomeSettingsMessage("Настройки блоков сохранены на сервере.");
+      window.dispatchEvent(new CustomEvent("school46.home-sections-updated"));
+    } catch (error) {
+      setHomeSettingsMessage(error instanceof Error ? error.message : "Не удалось сохранить настройки на сервере.");
+    }
   }
 
   const homeSettingsChanged = JSON.stringify(homeSettings) !== JSON.stringify(savedHomeSettings);

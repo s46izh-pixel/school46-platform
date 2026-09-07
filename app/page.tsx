@@ -102,20 +102,22 @@ export default async function Home() {
           </section>
         </HomeSectionGate>
 
-        <section className="bg-ink py-12 text-white">
-          <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
-            <div>
-              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200"><Bell size={16} /> Персональные настройки</p>
-              <h2 className="text-3xl font-semibold">Сайт запоминает выбранный класс и педагога</h2>
-              <p className="mt-4 max-w-2xl leading-7 text-slate-300">
-                Персональный выбор класса сохраняется на устройстве, а материалы админки сохраняются в проекте и могут переноситься вместе с сайтом.
-              </p>
+        <HomeSectionGate id="personalization">
+          <section className="bg-ink py-12 text-white">
+            <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
+              <div>
+                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200"><Bell size={16} /> Персональные настройки</p>
+                <h2 className="text-3xl font-semibold">Сайт запоминает выбранный класс и педагога</h2>
+                <p className="mt-4 max-w-2xl leading-7 text-slate-300">
+                  Персональный выбор класса сохраняется на устройстве, а материалы админки сохраняются в проекте и могут переноситься вместе с сайтом.
+                </p>
+              </div>
+              <Link href="/api/news" className="self-end rounded-[8px] bg-white px-5 py-3 text-center font-semibold text-ink">
+                Проверить API новостей
+              </Link>
             </div>
-            <Link href="/api/news" className="self-end rounded-[8px] bg-white px-5 py-3 text-center font-semibold text-ink">
-              Проверить API новостей
-            </Link>
-          </div>
-        </section>
+          </section>
+        </HomeSectionGate>
       </main>
       <Footer />
       <MobileNav />

@@ -12,7 +12,7 @@ export function HomeSectionGate({ id, children }: { id: HomeSectionId; children:
     function loadSettings() {
       getPublicHomeSections()
         .then((homeSections) => setSettings({ ...defaultHomeSectionSettings(), ...homeSections } as Record<HomeSectionId, boolean>))
-        .catch(() => setSettings(defaultHomeSectionSettings()));
+        .catch(() => setSettings(fallbackHomeSectionSettings()));
     }
 
     loadSettings();
@@ -26,4 +26,13 @@ export function HomeSectionGate({ id, children }: { id: HomeSectionId; children:
 
   if (!settings) return null;
   return settings[id] === false ? null : <>{children}</>;
+}
+
+function fallbackHomeSectionSettings(): Record<HomeSectionId, boolean> {
+  return {
+    ...defaultHomeSectionSettings(),
+    news: false,
+    personalization: false,
+    rating: false
+  };
 }

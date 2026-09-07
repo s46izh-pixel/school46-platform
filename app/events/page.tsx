@@ -1,10 +1,10 @@
 import { CalendarView } from "@/components/calendar-view";
 import { PageHero, PageShell } from "@/components/page-shell";
-import { ADMIN_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getDataset, getMonthlyEventNotes } from "@/lib/sheets";
 import type { EventItem } from "@/lib/types";
 
-export const revalidate = ADMIN_REVALIDATE_SECONDS;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function EventsPage() {
   const [events, monthlyItems] = await Promise.all([

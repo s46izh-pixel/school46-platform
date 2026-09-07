@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { hasDatabaseAdminStore, readAdminStoreFromDatabase, writeAdminStoreToDatabase } from "./admin-store-db";
 import type { ApplicationItem, NewsItem } from "./types";
 
 export type AdminStore = {
@@ -25,6 +26,15 @@ const storePath = path.join(process.cwd(), "data", "admin-store.json");
 const maxInlineImageLength = 450_000;
 
 export async function readAdminStore(): Promise<AdminStore> {
+  if (hasDatabaseAdminStore()) {
+    try {
+      const store = await readAdminStoreFromDatabase();
+      return sanitizeAdminStore({ ...defaultAdminStore, ...store });
+    } catch {
+      return defaultAdminStore;
+    }
+  }
+
   try {
     const content = await readFile(storePath, "utf8");
     const parsed = JSON.parse(content) as Partial<AdminStore>;
@@ -37,6 +47,8 @@ export async function readAdminStore(): Promise<AdminStore> {
 export async function updateAdminStore(patch: Partial<AdminStore>) {
   const current = await readAdminStore();
   const next = sanitizeAdminStore({ ...current, ...patch });
+  if (hasDatabaseAdminStore()) return writeAdminStoreToDatabase(next);
+
   await mkdir(path.dirname(storePath), { recursive: true });
   await writeFile(storePath, JSON.stringify(next, null, 2), "utf8");
   return next;

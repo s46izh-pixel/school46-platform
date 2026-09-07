@@ -1,0 +1,11 @@
+.git
+.next
+.next-build
+.next-dev
+.open-next
+dist
+node_modules
+npm-debug.log
+.env
+.env.local
+data/admin-store.json

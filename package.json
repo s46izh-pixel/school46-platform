@@ -9,7 +9,8 @@
     "build:sites": "cross-env NEXT_OUTPUT_STANDALONE=true next build && cross-env NEXT_OUTPUT_STANDALONE=true opennextjs-cloudflare build -s --skipWranglerConfigCheck && node scripts/prepare-sites-dist.mjs",
     "build:vercel": "next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:admin-store": "node scripts/seed-admin-store-db.mjs"
   },
   "dependencies": {
     "@types/pg": "^8.23.1",

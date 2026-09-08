@@ -58,11 +58,14 @@ export type EventItem = {
   owner: string;
   status: EventStatus;
   cover: string;
+  coverWide?: string;
   tags: string[];
   acceptApplications: boolean;
   applicationDeadline?: string;
   applicationFields: string[];
   applicationButtonText: string;
+  allowFiles?: boolean;
+  allowedFiles?: string;
   link?: string;
   slug: string;
 };

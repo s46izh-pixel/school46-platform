@@ -23,7 +23,7 @@ export const defaultAdminStore: AdminStore = {
 };
 
 const storePath = path.join(process.cwd(), "data", "admin-store.json");
-const maxInlineImageLength = 450_000;
+const maxInlineImageLength = 1_600_000;
 
 export async function readAdminStore(): Promise<AdminStore> {
   if (hasDatabaseAdminStore()) {
@@ -74,6 +74,10 @@ function sanitizeEventPage(item: unknown) {
   if (typeof draft.cover === "string" && isOversizedInlineImage(draft.cover)) {
     draft.cover = "";
     draft.coverFileName = "";
+  }
+  if (typeof draft.coverWide === "string" && isOversizedInlineImage(draft.coverWide)) {
+    draft.coverWide = "";
+    draft.coverWideFileName = "";
   }
   return draft;
 }

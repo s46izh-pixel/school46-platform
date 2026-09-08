@@ -22,7 +22,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
       <section className="mx-auto grid max-w-6xl gap-5 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="grid gap-5">
           <div className="relative aspect-[16/9] overflow-hidden rounded-[8px] bg-slate-100 shadow-soft">
-            <img src={item.cover} alt="" className="h-full w-full object-cover" />
+            <img src={item.coverWide || item.cover} alt="" className={`h-full w-full ${item.coverWide ? "object-cover" : "object-contain"}`} />
           </div>
 
           <InfoSection icon={<ClipboardList />} title="Положение о мероприятии">

@@ -46,8 +46,7 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [profileCategories, setProfileCategories] = useState<string[]>([]);
   const [manualItems, setManualItems] = useState<EventItem[]>([]);
-  const [calendarTemplateItems, setCalendarTemplateItems] = useState<EventItem[]>([]);
-  const detailItems = useMemo(() => [...manualItems, ...calendarTemplateItems], [calendarTemplateItems, manualItems]);
+  const detailItems = useMemo(() => manualItems, [manualItems]);
   const filterOptionItems = useMemo(() => [...items, ...detailItems], [detailItems, items]);
   const classCategoryOptions = useMemo(
     () => Array.from(new Set(filterOptionItems.flatMap((item) => splitClassCategories(item.classCategory)))),
@@ -77,21 +76,17 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
       getPublicEventSettings()
         .then((settings) => {
           setManualItems(readManualEventPages(settings.eventPages as ManualEventPageDraft[]));
-          setCalendarTemplateItems(readPublishedCalendarTemplates(items, settings.calendarTemplateVisibility));
         })
         .catch(() => {
           setManualItems([]);
-          setCalendarTemplateItems([]);
         });
     }
     syncDetailEvents();
     window.addEventListener("storage", syncDetailEvents);
-    window.addEventListener("school46.calendar-templates-updated", syncDetailEvents);
     return () => {
       window.removeEventListener("storage", syncDetailEvents);
-      window.removeEventListener("school46.calendar-templates-updated", syncDetailEvents);
     };
-  }, [items]);
+  }, []);
 
   const filtered = useMemo(
     () =>
@@ -549,6 +544,7 @@ type ManualEventPageDraft = {
   status?: string;
   slug?: string;
   cover?: string;
+  coverWide?: string;
   description?: string;
   acceptApplications?: boolean;
   deadline?: string;
@@ -563,10 +559,6 @@ function readManualEventPages(drafts: ManualEventPageDraft[]): EventItem[] {
   return drafts
     .filter((item) => (item.title || item.slug) && item.published !== false && !isManualAutoHidden(item.autoHideDate))
     .map((item, index) => manualDraftToEvent(item, index));
-}
-
-function readPublishedCalendarTemplates(items: EventItem[], visibility: Record<string, boolean>) {
-  return items.filter((item) => visibility[item.slug] === true);
 }
 
 function isManualAutoHidden(value: string | undefined) {
@@ -597,6 +589,7 @@ function manualDraftToEvent(item: ManualEventPageDraft, index: number): EventIte
     owner: item.owner || "Школа №46",
     status: normalizeManualStatus(item.status),
     cover: item.cover || "/images/school-hero.jpg",
+    coverWide: item.coverWide || "",
     tags: [category],
     acceptApplications: Boolean(item.acceptApplications),
     applicationDeadline: validDateKey(item.deadline) || undefined,

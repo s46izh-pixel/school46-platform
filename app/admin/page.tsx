@@ -137,7 +137,7 @@ export default function AdminPage() {
         <Card className="bg-white">
           {active === "Dashboard" ? <Dashboard events={remoteEvents} applications={adminApplications} /> : null}
           {active === "Новости" ? <NewsEditor role={role} /> : null}
-          {active === "Мероприятия" ? <EventsEditor title="Мероприятия" events={remoteEvents} drafts={eventPageDrafts} /> : null}
+          {active === "Мероприятия" ? <EventsEditor title="Мероприятия" drafts={eventPageDrafts} /> : null}
           {active === "Заявки" ? <ApplicationsTable applications={adminApplications} setApplications={setAdminApplications} /> : null}
           {active === "Расписание" ? <SchedulePreview /> : null}
           {active === "Настройки" ? <SettingsPanel /> : null}
@@ -270,8 +270,6 @@ type EventPageDraft = {
   autoHideDate?: string;
 };
 
-type CalendarTemplateVisibility = Record<string, boolean>;
-
 function eventDraftMonthLabel(date: string | undefined) {
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Без даты";
   const parsed = new Date(`${date}T00:00:00`);
@@ -283,10 +281,7 @@ function uniqueFilterValues(values: string[]) {
   return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }
 
-function EventsEditor({ title, events: adminEvents, drafts }: { title: string; events: EventItem[]; drafts: EventPageDraft[] }) {
-  const source = adminEvents;
-  const [templateVisibility, setTemplateVisibility] = useState<CalendarTemplateVisibility>({});
-  const actions = source.map((item) => ({ label: "Страница", href: `/events/${item.slug}`, slug: item.slug, published: templateVisibility[item.slug] === true }));
+function EventsEditor({ title, drafts }: { title: string; drafts: EventPageDraft[] }) {
   const visibleDrafts = drafts;
   const [manualDrafts, setManualDrafts] = useState(visibleDrafts);
   const [manualMonthFilter, setManualMonthFilter] = useState("Все месяцы");
@@ -301,10 +296,6 @@ function EventsEditor({ title, events: adminEvents, drafts }: { title: string; e
     }),
     [manualCategoryFilter, manualDrafts, manualMonthFilter]
   );
-
-  useEffect(() => {
-    getAdminStore().then((store) => setTemplateVisibility(store.calendarTemplateVisibility)).catch(() => setTemplateVisibility({}));
-  }, []);
 
   useEffect(() => {
     setManualDrafts(visibleDrafts);
@@ -326,15 +317,6 @@ function EventsEditor({ title, events: adminEvents, drafts }: { title: string; e
     updateManualDrafts(((await getAdminStore()).eventPages as EventPageDraft[]).filter((item) => item.slug !== slug));
   }
 
-  function toggleCalendarTemplate(slug: string) {
-    setTemplateVisibility((current) => {
-      const next = { ...current, [slug]: current[slug] !== true };
-      patchAdminStore({ calendarTemplateVisibility: next }).catch(() => null);
-      window.dispatchEvent(new CustomEvent("school46.calendar-templates-updated"));
-      return next;
-    });
-  }
-
   return (
     <div>
       <SectionTitle
@@ -348,7 +330,7 @@ function EventsEditor({ title, events: adminEvents, drafts }: { title: string; e
         }
       />
       <p className="mb-4 rounded-[8px] bg-mist px-4 py-3 text-sm leading-6 text-slate-600">
-        Календарь ниже показывает события из Google-таблицы. Страницы мероприятий создаются отдельно с нуля и не зависят от календарной строки.
+        События из Google-таблицы показываются только в публичном календаре. В админке редактируются только вручную созданные страницы мероприятий.
       </p>
       <div className="grid gap-5">
         <div className="grid gap-5">
@@ -375,14 +357,9 @@ function EventsEditor({ title, events: adminEvents, drafts }: { title: string; e
               />
               {!filteredManualDrafts.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">По выбранным фильтрам страниц нет.</p> : null}
             </div>
-          ) : null}
-          <EventPageManager
-            title="Шаблоны из календаря"
-            description="Эти строки можно показывать в «Афише подробностей». Новые события из календаря изначально скрыты, пока админ не включит их вручную."
-            items={source.map((item) => `${item.date} · ${item.title} · ${item.status}`)}
-            actions={actions}
-            onToggle={toggleCalendarTemplate}
-          />
+          ) : (
+            <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">Пока нет вручную созданных страниц мероприятий.</p>
+          )}
         </div>
       </div>
     </div>
@@ -453,6 +430,10 @@ function ApplicationsTable({ applications, setApplications }: { applications: Ap
               <Download size={17} />
               Скачать все заявки Excel
             </button>
+            <button type="button" onClick={() => downloadApplicationsAttachments(applications)} disabled={!countDownloadableAttachments(applications)} className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:text-slate-400">
+              <Download size={17} />
+              Скачать все вложения
+            </button>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {!eventGroups.length ? <p className="rounded-[8px] bg-mist px-4 py-3 text-sm text-slate-500">Пока нет заявок.</p> : null}
@@ -473,10 +454,16 @@ function ApplicationsTable({ applications, setApplications }: { applications: Ap
               <h3 className="text-xl font-semibold text-ink">{selectedEvent}</h3>
               <p className="text-sm text-slate-500">{selectedApplications.length} {applicationCountLabel(selectedApplications.length)}</p>
             </div>
-            <button type="button" onClick={() => downloadApplicationsExcel(filtered)} disabled={!filtered.length} className="flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              <Download size={17} />
-              Скачать Excel
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => downloadApplicationsAttachments(filtered)} disabled={!countDownloadableAttachments(filtered)} className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:text-slate-400">
+                <Download size={17} />
+                Скачать все вложения
+              </button>
+              <button type="button" onClick={() => downloadApplicationsExcel(filtered)} disabled={!filtered.length} className="flex items-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                <Download size={17} />
+                Скачать Excel
+              </button>
+            </div>
           </div>
           <div className="grid gap-3 rounded-[8px] bg-mist p-4 md:grid-cols-3">
             <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="rounded-[8px] border border-line bg-white px-3 py-2">
@@ -500,6 +487,12 @@ function ApplicationsTable({ applications, setApplications }: { applications: Ap
                     {item.files?.length ? <p className="mt-1 text-sm font-semibold text-apple">Вложения: {item.files.length}</p> : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {item.files?.length ? (
+                      <button type="button" onClick={() => downloadApplicationAttachments(item)} disabled={!countDownloadableAttachments([item])} className="flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600 disabled:cursor-not-allowed disabled:text-slate-400">
+                        <Download size={15} />
+                        Скачать вложения
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => setActiveApplication(item)} className="rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white">Открыть</button>
                     <button type="button" onClick={() => setEditingApplication(item)} className="flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">
                       <FilePenLine size={15} />
@@ -534,7 +527,7 @@ function ApplicationDetailsModal({ application, onClose }: { application: Applic
           <button type="button" onClick={onClose} className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">Закрыть</button>
         </div>
         <ApplicationInfoGrid application={application} />
-        <ApplicationFiles files={application.files ?? []} />
+        <ApplicationFiles application={application} />
       </div>
     </div>
   );
@@ -589,7 +582,7 @@ function ApplicationEditModal({
             <textarea value={draft.comment} onChange={(event) => updateField("comment", event.target.value)} rows={4} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2" />
           </label>
         </div>
-        <ApplicationFiles files={draft.files ?? []} />
+        <ApplicationFiles application={draft} />
         <button className="mt-4 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white">Сохранить заявку</button>
       </form>
     </div>
@@ -634,22 +627,38 @@ function ApplicationInfoGrid({ application }: { application: ApplicationItem }) 
   );
 }
 
-function ApplicationFiles({ files }: { files: NonNullable<ApplicationItem["files"]> }) {
+function ApplicationFiles({ application }: { application: ApplicationItem }) {
+  const files = application.files ?? [];
   if (!files.length) return null;
+  const downloadable = countDownloadableAttachments([application]);
   return (
     <div className="mt-4 rounded-[8px] border border-line bg-white p-4">
-      <h4 className="mb-3 font-semibold text-ink">Вложения</h4>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h4 className="font-semibold text-ink">Вложения</h4>
+        <button type="button" onClick={() => downloadApplicationAttachments(application)} disabled={!downloadable} className="flex items-center gap-2 rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+          <Download size={15} />
+          Скачать вложения
+        </button>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {files.map((file) => (
+        {files.map((file, index) => (
           <div key={`${file.name}-${file.size}`} className="rounded-[8px] border border-line bg-mist p-3">
             <p className="break-words text-sm font-semibold text-ink">{file.name}</p>
             <p className="mt-1 text-xs text-slate-500">{file.type || "файл"} · {formatFileSize(file.size)}</p>
             {file.dataUrl ? (
-              <a href={file.dataUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-[8px] border border-line bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={file.dataUrl} alt={file.name} className="max-h-64 w-full object-contain" />
-              </a>
-            ) : null}
+              <>
+                <a href={file.dataUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-[8px] border border-line bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={file.dataUrl} alt={file.name} className="max-h-64 w-full object-contain" />
+                </a>
+                <button type="button" onClick={() => downloadAttachment(application, file, index)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-[8px] bg-white px-3 py-2 text-sm font-semibold text-ink">
+                  <Download size={15} />
+                  Скачать файл
+                </button>
+              </>
+            ) : (
+              <p className="mt-3 rounded-[8px] bg-white px-3 py-2 text-xs font-semibold text-slate-500">Файл сохранён без содержимого. Скачать можно будет для новых вложений.</p>
+            )}
           </div>
         ))}
       </div>
@@ -1020,6 +1029,87 @@ function downloadApplicationsExcel(items: ApplicationItem[]) {
   URL.revokeObjectURL(url);
 }
 
+function downloadApplicationsAttachments(items: ApplicationItem[]) {
+  const downloads = items.flatMap((application) => downloadableAttachments(application));
+  downloads.forEach(({ application, file, index }, downloadIndex) => {
+    window.setTimeout(() => downloadAttachment(application, file, index), downloadIndex * 180);
+  });
+}
+
+function downloadApplicationAttachments(application: ApplicationItem) {
+  downloadApplicationsAttachments([application]);
+}
+
+function downloadableAttachments(application: ApplicationItem) {
+  return (application.files ?? [])
+    .map((file, index) => ({ application, file, index }))
+    .filter((item) => Boolean(item.file.dataUrl));
+}
+
+function countDownloadableAttachments(items: ApplicationItem[]) {
+  return items.reduce((count, application) => count + downloadableAttachments(application).length, 0);
+}
+
+function downloadAttachment(application: ApplicationItem, file: NonNullable<ApplicationItem["files"]>[number], index: number) {
+  if (!file.dataUrl) return;
+  const blob = dataUrlToBlob(file.dataUrl);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = applicationAttachmentFileName(application, file, index);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function applicationAttachmentFileName(application: ApplicationItem, file: NonNullable<ApplicationItem["files"]>[number], index: number) {
+  const prefix = safeFilePart([application.className, application.student || application.contact || "zayavka"].filter(Boolean).join("_"));
+  const extension = fileExtension(file.name) || extensionFromMime(file.type) || extensionFromDataUrl(file.dataUrl) || "file";
+  const suffix = (application.files?.length ?? 0) > 1 ? `_${index + 1}` : "";
+  return `${prefix}${suffix}.${extension}`;
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [meta, payload = ""] = dataUrl.split(",");
+  const mime = meta.match(/^data:([^;]+)/)?.[1] || "application/octet-stream";
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+function safeFilePart(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[а-яё]/g, (letter) => translit[letter] ?? "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 90) || `zayavka_${Date.now()}`;
+}
+
+function fileExtension(name: string) {
+  return name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
+}
+
+function extensionFromMime(type: string) {
+  if (type === "image/jpeg") return "jpg";
+  if (type === "image/png") return "png";
+  if (type === "image/webp") return "webp";
+  if (type === "application/pdf") return "pdf";
+  if (type.includes("wordprocessingml")) return "docx";
+  if (type.includes("spreadsheetml")) return "xlsx";
+  if (type.includes("zip")) return "zip";
+  return "";
+}
+
+function extensionFromDataUrl(dataUrl: string | undefined) {
+  const mime = dataUrl?.match(/^data:([^;]+)/)?.[1] || "";
+  return extensionFromMime(mime);
+}
+
 function formatDateTime(value: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -1088,11 +1178,6 @@ async function migrateLocalAdminStore() {
   const localEventPages = readLocalJson<EventPageDraft[]>("school46.admin.eventPages", []);
   if (!store.eventPages.length && localEventPages.length) patch.eventPages = localEventPages;
 
-  const localCalendarVisibility = readLocalJson<CalendarTemplateVisibility>("school46.calendarTemplateVisibility", {});
-  if (!Object.keys(store.calendarTemplateVisibility).length && Object.keys(localCalendarVisibility).length) {
-    patch.calendarTemplateVisibility = localCalendarVisibility;
-  }
-
   const localNewsVisibility = readLocalJson<NewsVisibility>(newsVisibilityKey, {});
   if (!Object.keys(store.newsVisibility).length && Object.keys(localNewsVisibility).length) {
     patch.newsVisibility = localNewsVisibility;
@@ -1122,3 +1207,39 @@ function readLocalJson<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
+
+const translit: Record<string, string> = {
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "e",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "h",
+  ц: "c",
+  ч: "ch",
+  ш: "sh",
+  щ: "sch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya"
+};

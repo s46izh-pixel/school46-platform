@@ -3,14 +3,31 @@
 import { Card } from "@/components/card";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import type { EventItem, ScheduleChange, ScheduleLesson, UserPreferences } from "@/lib/types";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, Trophy } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 const dayNames = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
 type ScheduleDisplayItem = ScheduleLesson | ScheduleChange;
 type LessonState = ReturnType<typeof getLessonState>;
+type RatingLeaderGroup = {
+  title: string;
+  leaders: Array<{ className: string; points: number }>;
+  top: Array<{ className: string; points: number }>;
+  maxPoints: number;
+};
 
-export function TodayOverview({ events, lessons, changes }: { events: EventItem[]; lessons: ScheduleLesson[]; changes: ScheduleChange[] }) {
+export function TodayOverview({
+  events,
+  lessons,
+  changes,
+  ratingLeaders
+}: {
+  events: EventItem[];
+  lessons: ScheduleLesson[];
+  changes: ScheduleChange[];
+  ratingLeaders: RatingLeaderGroup[];
+}) {
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
   const [now, setNow] = useState(() => new Date());
   const today = dayNames[new Date().getDay()];
@@ -73,6 +90,10 @@ export function TodayOverview({ events, lessons, changes }: { events: EventItem[
     const dated = personalEvents.filter((event) => isEventOnDate(event, todayIso));
     return (dated.length ? dated : upcomingEvents(personalEvents, todayIso)).slice(0, 3);
   }, [events, prefs]);
+  const compactLeaders = useMemo(() => ratingLeaders.flatMap((group) => {
+    const source = group.leaders.length ? group.leaders : group.top.slice(0, 1);
+    return source.map((leader) => ({ ...leader, groupTitle: group.title }));
+  }).slice(0, 3), [ratingLeaders]);
 
   const title = prefs.role === "teacher"
     ? `${todayLessons.length} уроков у педагога`
@@ -112,15 +133,45 @@ export function TodayOverview({ events, lessons, changes }: { events: EventItem[
         ))}
         {todayLessons.length && !visibleLessonStates.length ? <p className="rounded-[8px] bg-white p-3 text-sm text-slate-600">На сегодня уроки уже завершены.</p> : null}
         {!todayLessons.length ? <p className="rounded-[8px] bg-white p-3 text-sm text-slate-600">На выбранный профиль уроков на сегодня нет.</p> : null}
-        {todayEvents.slice(0, 2).map((event) => (
-          <div key={event.id} className="grid grid-cols-[108px_1fr] items-center gap-3 rounded-[8px] bg-white px-3 py-2.5">
-            <span className="whitespace-nowrap text-sm font-semibold text-coral">{event.time || event.category}</span>
-            <span className="min-w-0 truncate text-sm text-slate-700">{event.title}</span>
+        <div className="mt-3 grid gap-2 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-ink">Ближайшие события</h3>
+            <Link href="/events" className="text-xs font-semibold text-apple">Все</Link>
           </div>
-        ))}
+          {todayEvents.map((event) => (
+            <div key={event.id} className="grid grid-cols-[108px_1fr] items-center gap-3 rounded-[8px] bg-white px-3 py-2.5">
+              <span className="whitespace-nowrap text-sm font-semibold text-coral">{event.time || formatEventDate(event)}</span>
+              <span className="min-w-0 truncate text-sm text-slate-700">{event.title}</span>
+            </div>
+          ))}
+          {!todayEvents.length ? <p className="rounded-[8px] bg-white p-3 text-sm text-slate-600">Ближайшие события пока не указаны.</p> : null}
+        </div>
+        <div className="mt-3 grid gap-2 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Trophy size={16} className="text-coral" /> Лидеры рейтинга</h3>
+            <Link href="/rating" className="text-xs font-semibold text-apple">Открыть</Link>
+          </div>
+          {compactLeaders.length ? (
+            <div className="flex min-w-0 gap-2 overflow-x-auto rounded-[8px] bg-white px-3 py-2.5">
+              {compactLeaders.map((leader) => (
+                <span key={`${leader.groupTitle}-${leader.className}`} className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] bg-mist px-2.5 py-1.5 text-sm font-semibold text-apple">
+                  {leader.className}
+                  <span className="text-xs font-semibold text-slate-500">{leader.points}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {!compactLeaders.length ? <p className="rounded-[8px] bg-white p-3 text-sm text-slate-600">Лидеры появятся после заполнения рейтинга.</p> : null}
+        </div>
       </div>
     </Card>
   );
+}
+
+function formatEventDate(event: EventItem) {
+  const date = event.startDate || event.date;
+  if (!date) return event.category;
+  return new Date(date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
 function formatLessonTime(lesson: ScheduleLesson | ScheduleChange) {

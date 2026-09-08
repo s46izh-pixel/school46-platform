@@ -1,6 +1,6 @@
 "use client";
 
-import { uniqueClasses } from "@/lib/class-utils";
+import { normalizeClassName, uniqueClasses } from "@/lib/class-utils";
 import { classes } from "@/lib/mock-data";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import type { ScheduleLesson, UserPreferences } from "@/lib/types";
@@ -40,7 +40,7 @@ export function WelcomePersonalizer() {
         setTeacherOptions(nextTeachers);
         setDraft((current) => ({
           ...current,
-          selectedClass: nextClasses.includes(current.selectedClass) ? current.selectedClass : nextClasses[0] ?? current.selectedClass,
+          selectedClass: nextClasses.includes(normalizeClassName(current.selectedClass)) ? normalizeClassName(current.selectedClass) : nextClasses[0] ?? current.selectedClass,
           selectedClasses: normalizeSelectedClasses(current.selectedClasses, current.selectedClass, nextClasses),
           selectedTeacher: nextTeachers.includes(current.selectedTeacher) ? current.selectedTeacher : nextTeachers[0] ?? current.selectedTeacher
         }));
@@ -93,7 +93,8 @@ export function WelcomePersonalizer() {
 
   function resetTeacherClasses() {
     setDraft((current) => {
-      const safeClass = classOptions.includes(current.selectedClass) ? current.selectedClass : classOptions[0];
+      const currentClass = normalizeClassName(current.selectedClass);
+      const safeClass = classOptions.includes(currentClass) ? currentClass : classOptions[0];
       return { ...current, selectedClass: safeClass, selectedClasses: [safeClass], groupName: safeClass };
     });
   }
@@ -213,9 +214,10 @@ export function WelcomePersonalizer() {
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options: string[]) {
-  const source = selectedClasses?.length ? selectedClasses : [selectedClass];
+  const source = (selectedClasses?.length ? selectedClasses : [selectedClass]).map(normalizeClassName).filter(Boolean);
   const filtered = source.filter((item) => options.includes(item));
-  const fallback = options.includes(selectedClass) ? selectedClass : options[0];
+  const currentClass = normalizeClassName(selectedClass);
+  const fallback = options.includes(currentClass) ? currentClass : options[0];
   const unique = Array.from(new Set(filtered.length ? filtered : [fallback]));
   return unique.filter(Boolean);
 }

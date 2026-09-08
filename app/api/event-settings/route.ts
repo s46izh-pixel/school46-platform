@@ -9,20 +9,18 @@ export async function GET() {
     const store = await readAdminStore();
     return NextResponse.json(
       {
-        calendarTemplateVisibility: store.calendarTemplateVisibility,
         eventPages: store.eventPages.map(toPublicEventSummary)
       },
       { headers: shortApiCacheHeaders }
     );
   } catch {
-    return NextResponse.json({ calendarTemplateVisibility: {}, eventPages: [] }, { headers: shortApiCacheHeaders });
+    return NextResponse.json({ eventPages: [] }, { headers: shortApiCacheHeaders });
   }
 }
 
 function toPublicEventSummary(item: unknown) {
   if (!item || typeof item !== "object") return item;
   const event = item as Record<string, unknown>;
-  const cover = typeof event.cover === "string" && event.cover.startsWith("data:image/") ? "" : event.cover;
   return {
     title: event.title,
     category: event.category,
@@ -34,7 +32,8 @@ function toPublicEventSummary(item: unknown) {
     owner: event.owner,
     status: event.status,
     slug: event.slug,
-    cover,
+    cover: event.cover,
+    coverWide: event.coverWide,
     description: event.description,
     acceptApplications: event.acceptApplications,
     deadline: event.deadline,

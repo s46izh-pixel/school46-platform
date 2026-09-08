@@ -19,6 +19,12 @@ export async function POST(request: Request) {
     const applicationId = stringValue(body.applicationId) || `app-${Date.now()}`;
     const createdAt = stringValue(body.createdAt) || new Date().toISOString();
     const eventTitle = pickString(body, ["eventTitle", "contest", "Мероприятие"]) || "Мероприятие";
+    const store = await readAdminStore();
+    const fileRules = fileRulesForRequest(body, store.eventPages as Array<Record<string, unknown>>);
+    const fileCheck = validateFiles(body.files, fileRules);
+    if (!fileCheck.ok) {
+      return NextResponse.json({ message: fileCheck.message }, { status: 400, headers: noStoreHeaders });
+    }
 
     const application: ApplicationItem = {
       id: applicationId,
@@ -37,10 +43,9 @@ export async function POST(request: Request) {
       comment: pickString(body, ["comment", "комментарий", "Комментарий"]),
       consent: Boolean(body.consent),
       status: "new",
-      files: normalizeFiles(body.files)
+      files: normalizeFiles(body.files, fileRules)
     };
 
-    const store = await readAdminStore();
     await updateAdminStore({ applications: [application, ...store.applications] });
 
     return NextResponse.json(application, { status: 201, headers: noStoreHeaders });
@@ -120,22 +125,91 @@ function pickString(source: Record<string, unknown>, keys: string[]) {
   return "";
 }
 
-function normalizeFiles(value: unknown): ApplicationItem["files"] {
+type FileRules = {
+  allowFiles: boolean;
+  allowedFiles: string[];
+};
+
+function fileRulesForRequest(body: Record<string, unknown>, eventPages: Array<Record<string, unknown>>): FileRules {
+  const eventId = pickString(body, ["eventId"]);
+  const slug = eventId.startsWith("manual-") ? eventId.slice("manual-".length) : "";
+  const eventPage = slug ? eventPages.find((item) => stringValue(item.slug) === slug) : undefined;
+  return {
+    allowFiles: eventPage?.allowFiles !== false,
+    allowedFiles: parseAllowedFiles(stringValue(eventPage?.allowedFiles))
+  };
+}
+
+function parseAllowedFiles(value: string) {
+  const values = (value || "pdf, docx, jpg, png, zip")
+    .split(/[,;\s]+/)
+    .map((item) => item.trim().replace(/^\./, "").toLowerCase().replace(/[^a-z0-9]/g, ""))
+    .filter(Boolean);
+  return Array.from(new Set(values.length ? values : ["pdf", "docx", "jpg", "png", "zip"]));
+}
+
+function validateFiles(value: unknown, rules: FileRules) {
+  if (!Array.isArray(value) || !value.length) return { ok: true as const };
+  if (!rules.allowFiles) return { ok: false as const, message: "Для этого мероприятия вложения отключены." };
+  const maxFiles = 5;
+  const maxFileSize = 10 * 1024 * 1024;
+  if (value.length > maxFiles) return { ok: false as const, message: `Можно прикрепить не больше ${maxFiles} файлов.` };
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const file = item as Record<string, unknown>;
+    const name = stringValue(file.name);
+    if (!name) continue;
+    if (!isAllowedFile(name, stringValue(file.type), rules.allowedFiles)) {
+      return { ok: false as const, message: `Файл "${name}" не подходит. Разрешены форматы: ${rules.allowedFiles.join(", ")}.` };
+    }
+    if (typeof file.size === "number" && file.size > maxFileSize) {
+      return { ok: false as const, message: `Файл "${name}" слишком большой. Максимум 10 МБ.` };
+    }
+  }
+
+  return { ok: true as const };
+}
+
+function normalizeFiles(value: unknown, rules: FileRules): ApplicationItem["files"] {
   if (!Array.isArray(value)) return [];
+  const maxFiles = 5;
+  const maxDataUrlLength = 1_600_000;
   return value
+    .slice(0, maxFiles)
     .map((item): NonNullable<ApplicationItem["files"]>[number] | null => {
       if (!item || typeof item !== "object") return null;
       const file = item as Record<string, unknown>;
       const name = stringValue(file.name);
       if (!name) return null;
+      if (!rules.allowFiles || !isAllowedFile(name, stringValue(file.type), rules.allowedFiles)) return null;
+      const dataUrl = stringValue(file.dataUrl);
       return {
-        name,
+        name: safeFileName(name),
         size: typeof file.size === "number" ? file.size : 0,
         type: stringValue(file.type),
-        dataUrl: stringValue(file.dataUrl) || undefined
+        dataUrl: dataUrl.length <= maxDataUrlLength ? dataUrl || undefined : undefined
       };
     })
     .filter((item): item is NonNullable<ApplicationItem["files"]>[number] => item !== null);
+}
+
+function isAllowedFile(name: string, type: string, allowedFiles: string[]) {
+  const extension = name.split(".").pop()?.toLowerCase() || "";
+  if (allowedFiles.includes(extension)) return true;
+  return type.startsWith("image/") && allowedFiles.some((item) => ["jpg", "jpeg", "png", "webp"].includes(item));
+}
+
+function safeFileName(name: string) {
+  const extension = name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "file";
+  const base = name
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[а-яё]/g, (letter) => translit[letter] ?? "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || `file-${Date.now()}`;
+  return `${base}.${extension}`;
 }
 
 function cookieFromRequest(request: Request, name: string) {
@@ -146,3 +220,39 @@ function cookieFromRequest(request: Request, name: string) {
     .find((item) => item.startsWith(`${name}=`))
     ?.slice(name.length + 1);
 }
+
+const translit: Record<string, string> = {
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "e",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "h",
+  ц: "c",
+  ч: "ch",
+  ш: "sh",
+  щ: "sch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya"
+};

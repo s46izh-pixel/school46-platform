@@ -22,12 +22,15 @@ type ManualEventPageDraft = {
   status?: string;
   slug?: string;
   cover?: string;
+  coverWide?: string;
   description?: string;
   pageBlocks?: string;
   acceptApplications?: boolean;
   deadline?: string;
   applicationFields?: string;
   applicationButton?: string;
+  allowFiles?: boolean;
+  allowedFiles?: string;
   published?: boolean;
   autoHideDate?: string;
 };
@@ -111,9 +114,9 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
       <section className="mx-auto grid max-w-6xl gap-5 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="grid gap-5">
           {event.cover ? (
-            <div className="overflow-hidden rounded-[8px] bg-slate-100 shadow-soft">
+            <div className="relative aspect-[16/9] overflow-hidden rounded-[8px] bg-slate-100 shadow-soft">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={event.cover} alt="" className="aspect-[16/9] w-full object-cover" />
+              <img src={event.coverWide || event.cover} alt="" className={`h-full w-full ${event.coverWide ? "object-cover" : "object-contain"}`} />
             </div>
           ) : null}
 
@@ -189,11 +192,14 @@ function manualDraftToEvent(item: ManualEventPageDraft): EventItem {
     owner: item.owner || "Школа №46",
     status: normalizeStatus(item.status),
     cover: item.cover || "",
+    coverWide: item.coverWide || "",
     tags: [category],
     acceptApplications: Boolean(item.acceptApplications),
     applicationDeadline: validDateKey(item.deadline) || undefined,
     applicationFields: splitFields(item.applicationFields),
     applicationButtonText: item.applicationButton || "Подать заявку",
+    allowFiles: item.allowFiles !== false,
+    allowedFiles: item.allowedFiles || "pdf, docx, jpg, png, zip",
     slug
   };
 }

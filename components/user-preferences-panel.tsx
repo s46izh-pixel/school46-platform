@@ -1,7 +1,7 @@
 "use client";
 
 import { classes, teacherNames } from "@/lib/mock-data";
-import { uniqueClasses } from "@/lib/class-utils";
+import { normalizeClassName, uniqueClasses } from "@/lib/class-utils";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import type { ScheduleLesson, UserPreferences } from "@/lib/types";
 import { Moon, Star, Sun } from "lucide-react";
@@ -69,7 +69,8 @@ export function UserPreferencesPanel() {
 
   function resetTeacherClasses() {
     setPrefs((current) => {
-      const safeClass = classOptions.includes(current.selectedClass) ? current.selectedClass : classOptions[0];
+      const currentClass = normalizeClassName(current.selectedClass);
+      const safeClass = classOptions.includes(currentClass) ? currentClass : classOptions[0];
       return { ...current, selectedClass: safeClass, selectedClasses: [safeClass], groupName: safeClass };
     });
   }
@@ -169,9 +170,10 @@ export function UserPreferencesPanel() {
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options: string[]) {
-  const source = selectedClasses?.length ? selectedClasses : [selectedClass];
+  const source = (selectedClasses?.length ? selectedClasses : [selectedClass]).map(normalizeClassName).filter(Boolean);
   const filtered = source.filter((item) => options.includes(item));
-  const fallback = options.includes(selectedClass) ? selectedClass : options[0];
+  const currentClass = normalizeClassName(selectedClass);
+  const fallback = options.includes(currentClass) ? currentClass : options[0];
   const unique = Array.from(new Set(filtered.length ? filtered : [fallback]));
   return unique.filter(Boolean);
 }

@@ -15,9 +15,8 @@ export async function getPublicNewsSettings() {
 }
 
 export async function getPublicEventSettings() {
-  return fetchJson<Pick<AdminStore, "eventPages" | "calendarTemplateVisibility">>("/api/event-settings", {
-    eventPages: [],
-    calendarTemplateVisibility: {}
+  return fetchJson<Pick<AdminStore, "eventPages">>("/api/event-settings", {
+    eventPages: []
   });
 }
 

@@ -2,7 +2,7 @@
 
 import { classes, teacherNames } from "@/lib/mock-data";
 import { preferencesStorageKey, defaultPreferences } from "@/lib/storage";
-import { uniqueClasses } from "@/lib/class-utils";
+import { normalizeClassName, uniqueClasses } from "@/lib/class-utils";
 import { BellSchedule, ScheduleChange, ScheduleLesson, UserPreferences } from "@/lib/types";
 import { ChevronDown, X } from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
@@ -37,7 +37,7 @@ export function ScheduleView({ lessons, bells, changes }: { lessons: ScheduleLes
     const savedTeacher = localStorage.getItem("school46.teacher");
     const savedPreferences = localStorage.getItem(preferencesStorageKey);
     const parsedPreferences = savedPreferences ? { ...defaultPreferences, ...JSON.parse(savedPreferences) } : defaultPreferences;
-    const preferredClass = savedClass ?? parsedPreferences.selectedClass;
+    const preferredClass = normalizeClassName(savedClass ?? parsedPreferences.selectedClass);
     const safeClass = preferredClass && classOptions.includes(preferredClass) ? preferredClass : classOptions[0];
     const safeClasses = normalizeSelectedClasses(parsedPreferences.selectedClasses, safeClass, classOptions);
     setClassName(safeClasses[0] ?? safeClass);
@@ -98,7 +98,8 @@ export function ScheduleView({ lessons, bells, changes }: { lessons: ScheduleLes
   }
 
   function resetTeacherClasses() {
-    const safeClass = classOptions.includes(className) ? className : classOptions[0];
+    const currentClass = normalizeClassName(className);
+    const safeClass = classOptions.includes(currentClass) ? currentClass : classOptions[0];
     setSelectedClasses([safeClass]);
     setClassName(safeClass);
   }
@@ -527,9 +528,10 @@ function uniqueValues(values: string[], fallback: string[]) {
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options: string[]) {
-  const source = selectedClasses?.length ? selectedClasses : [selectedClass];
+  const source = (selectedClasses?.length ? selectedClasses : [selectedClass]).map(normalizeClassName).filter(Boolean);
   const filtered = source.filter((item) => options.includes(item));
-  const fallback = options.includes(selectedClass) ? selectedClass : options[0];
+  const currentClass = normalizeClassName(selectedClass);
+  const fallback = options.includes(currentClass) ? currentClass : options[0];
   const unique = Array.from(new Set(filtered.length ? filtered : [fallback]));
   return unique.filter(Boolean);
 }

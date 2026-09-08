@@ -4,7 +4,7 @@ import { HomeSectionGate } from "@/components/home-section-gate";
 import { HomeNewsGrid } from "@/components/home-news-grid";
 import { MobileNav } from "@/components/mobile-nav";
 import { RatingTable } from "@/components/rating-table";
-import { Card, SectionTitle } from "@/components/card";
+import { SectionTitle } from "@/components/card";
 import { ScheduleView } from "@/components/schedule-view";
 import { HomeGreeting } from "@/components/home-greeting";
 import { TodayOverview } from "@/components/today-overview";
@@ -13,18 +13,19 @@ import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getScheduleChanges } from "@/lib/sheets";
-import type { BellSchedule, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
-import { Bell, Trophy } from "lucide-react";
+import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
+import { Bell } from "lucide-react";
 import Link from "next/link";
 
 export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function Home() {
-  const [lessons, bells, rating, changes] = await Promise.all([
+  const [lessons, bells, rating, changes, events] = await Promise.all([
     getDataset("schedule") as Promise<ScheduleLesson[]>,
     getDataset("bells") as Promise<BellSchedule[]>,
     getDataset("rating") as Promise<RatingItem[]>,
-    getScheduleChanges() as Promise<ScheduleChange[]>
+    getScheduleChanges() as Promise<ScheduleChange[]>,
+    getDataset("events") as Promise<EventItem[]>
   ]);
   const publishedNews = news.filter((item) => item.status === "published");
   const leaders = getRatingLeaders(rating);
@@ -52,17 +53,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="grid content-end gap-4">
-            <TodayOverview events={[]} lessons={lessons} changes={changes} />
-            <HomeSectionGate id="rating">
-              <Card>
-                <Trophy className="mb-4 text-coral" />
-                <p className="text-3xl font-semibold">{leaders.flatMap((item) => item.leaders).map((item) => item.className).join(", ")}</p>
-                <p className="text-sm text-slate-500">лидеры рейтинга</p>
-                <Link href="/rating" className="mt-4 inline-flex rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-ink">
-                  Открыть рейтинг
-                </Link>
-              </Card>
-            </HomeSectionGate>
+            <TodayOverview events={events} lessons={lessons} changes={changes} ratingLeaders={leaders} />
           </div>
         </section>
 

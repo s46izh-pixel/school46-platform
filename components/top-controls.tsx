@@ -2,7 +2,7 @@
 
 import { classes } from "@/lib/mock-data";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
-import { uniqueClasses } from "@/lib/class-utils";
+import { normalizeClassName, uniqueClasses } from "@/lib/class-utils";
 import type { ScheduleLesson, UserPreferences } from "@/lib/types";
 import { BarChart3, Check, Settings, X } from "lucide-react";
 import Link from "next/link";
@@ -73,7 +73,8 @@ export function TopControls() {
         setClassOptions(nextOptions);
         setTeacherOptions(nextTeachers);
         setPrefs((current) => {
-          const selectedClass = nextOptions.includes(current.selectedClass) ? current.selectedClass : nextOptions[0] ?? current.selectedClass;
+          const currentClass = normalizeClassName(current.selectedClass);
+          const selectedClass = nextOptions.includes(currentClass) ? currentClass : nextOptions[0] ?? current.selectedClass;
           const selectedTeacher = nextTeachers.includes(current.selectedTeacher) ? current.selectedTeacher : nextTeachers[0] ?? current.selectedTeacher;
           const selectedClasses = normalizeSelectedClasses(current.selectedClasses, selectedClass, nextOptions);
           const nextPrefs = { ...current, selectedClass, selectedClasses, groupName: selectedClasses.join(", "), selectedTeacher };
@@ -325,22 +326,24 @@ export function TopControls() {
 }
 
 function normalizePreferences(preferences: UserPreferences, savedClass?: string | null): UserPreferences {
-  const selectedClass = savedClass ?? preferences.selectedClass;
+  const selectedClass = normalizeClassName(savedClass ?? preferences.selectedClass) || preferences.selectedClass;
   const selectedClasses = normalizeSelectedClasses(preferences.selectedClasses, selectedClass);
+  const safeClass = selectedClasses[0] ?? selectedClass;
   return {
     ...preferences,
     theme: "light",
-    selectedClass: selectedClasses[0] ?? selectedClass,
+    selectedClass: safeClass,
     selectedClasses,
-    groupName: preferences.role === "teacher" ? formatClassSelection(selectedClasses) : selectedClass
+    groupName: preferences.role === "teacher" ? formatClassSelection(selectedClasses) : safeClass
   };
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options?: string[]) {
-  const source = selectedClasses?.length ? selectedClasses : [selectedClass];
+  const source = (selectedClasses?.length ? selectedClasses : [selectedClass]).map(normalizeClassName).filter(Boolean);
   const filtered = source.filter((item) => !options || options.includes(item));
-  const unique = Array.from(new Set(filtered.length ? filtered : [selectedClass]));
-  return unique.length ? unique : [selectedClass];
+  const fallback = normalizeClassName(selectedClass);
+  const unique = Array.from(new Set(filtered.length ? filtered : [fallback]));
+  return unique.length ? unique.filter(Boolean) : [fallback].filter(Boolean);
 }
 
 function getClassesByGroup(group: string, options: string[]) {

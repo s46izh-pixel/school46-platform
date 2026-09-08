@@ -2,9 +2,10 @@
 
 import { Card, SectionTitle } from "@/components/card";
 import { getAdminStore, patchAdminStore } from "@/lib/admin-store-client";
+import { uniqueClasses } from "@/lib/class-utils";
 import { classes } from "@/lib/mock-data";
 import type { EventItem, ScheduleLesson } from "@/lib/types";
-import { ArrowLeft, CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -79,6 +80,8 @@ const defaultForm = {
   slug: "",
   cover: "",
   coverFileName: "",
+  coverWide: "",
+  coverWideFileName: "",
   published: true,
   autoHideDate: "",
   description: "",
@@ -94,14 +97,27 @@ const defaultForm = {
 };
 
 type EventPageDraft = typeof defaultForm;
+type CropSettings = {
+  zoom: number;
+  x: number;
+  y: number;
+};
+type CoverCrop = {
+  source: string;
+  squareFileName: string;
+  wideFileName: string;
+  square: CropSettings;
+  wide: CropSettings;
+};
 
 export default function NewEventPage() {
   const [form, setForm] = useState<EventPageDraft>(defaultForm);
   const [sourceMode, setSourceMode] = useState<"new" | "copy" | "edit">("new");
   const [sourceSlug, setSourceSlug] = useState("");
   const [saved, setSaved] = useState(false);
-  const [classOptions, setClassOptions] = useState(() => sortClassNames(classes));
+  const [classOptions, setClassOptions] = useState(() => uniqueClasses(classes, classes));
   const [classCategoryOptions, setClassCategoryOptions] = useState(defaultClassCategoryOptions);
+  const [coverCrop, setCoverCrop] = useState<CoverCrop | null>(null);
   const pageBlocks = useMemo(() => parsePageBlocks(form.pageBlocks, form.description), [form.description, form.pageBlocks]);
   const selectedParticipantGroups = useMemo(() => splitParticipantGroups(form.classes), [form.classes]);
 
@@ -138,9 +154,9 @@ export default function NewEventPage() {
     fetch("/api/schedule", { cache: "no-store" })
       .then((response) => response.json())
       .then((data: { lessons?: ScheduleLesson[] }) => {
-        setClassOptions(sortClassNames([...(data.lessons?.map((lesson) => lesson.className) ?? []), ...classes]));
+        setClassOptions(uniqueClasses(data.lessons?.map((lesson) => lesson.className) ?? [], classes));
       })
-      .catch(() => setClassOptions(sortClassNames(classes)));
+      .catch(() => setClassOptions(uniqueClasses(classes, classes)));
 
     fetch("/api/events", { cache: "no-store" })
       .then((response) => response.json())
@@ -226,15 +242,44 @@ export default function NewEventPage() {
     if (!file) return;
 
     try {
-      const cover = await imageFileToSquareDataUrl(file);
+      const source = await fileToDataUrl(file);
+      const fileNames = coverFileNames(form.title || file.name, file.name);
+      const [cover, coverWide] = await Promise.all([
+        cropImageToDataUrl(source, defaultCrop(), "square"),
+        cropImageToDataUrl(source, defaultCrop(), "wide")
+      ]);
       setSaved(false);
       setForm((current) => ({
         ...current,
         cover,
-        coverFileName: file.name
+        coverFileName: fileNames.square,
+        coverWide,
+        coverWideFileName: fileNames.wide
       }));
+      setCoverCrop({ source, squareFileName: fileNames.square, wideFileName: fileNames.wide, square: defaultCrop(), wide: defaultCrop() });
     } catch {
       window.alert("Не удалось подготовить картинку. Попробуйте выбрать другое изображение.");
+    }
+  }
+
+  async function applyCoverCrop() {
+    if (!coverCrop) return;
+    try {
+      const [cover, coverWide] = await Promise.all([
+        cropImageToDataUrl(coverCrop.source, coverCrop.square, "square"),
+        cropImageToDataUrl(coverCrop.source, coverCrop.wide, "wide")
+      ]);
+      setSaved(false);
+      setForm((current) => ({
+        ...current,
+        cover,
+        coverFileName: coverCrop.squareFileName,
+        coverWide,
+        coverWideFileName: coverCrop.wideFileName
+      }));
+      setCoverCrop(null);
+    } catch {
+      window.alert("Не удалось применить обрезку. Попробуйте выбрать другое изображение.");
     }
   }
 
@@ -264,12 +309,6 @@ export default function NewEventPage() {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link href="/admin?tab=events" className="rounded-[8px] bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm">Назад к мероприятиям</Link>
-          {saved ? (
-            <span className="flex items-center gap-2 rounded-[8px] bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-              <CheckCircle2 size={17} />
-              Событие сохранено
-            </span>
-          ) : null}
         </div>
 
         <Card className="bg-white">
@@ -329,11 +368,44 @@ export default function NewEventPage() {
                     Прикрепить картинку с компьютера
                     <input onChange={handleCoverFile} type="file" accept="image/*" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
                   </label>
+                  {coverCrop ? (
+                    <div className="grid gap-3 rounded-[8px] border border-apple/20 bg-[var(--accent-soft)] p-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <SlidersHorizontal size={17} />
+                        Подгонка обложек
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <CropPreview title="Афиша и карточки" aspect="aspect-square" crop={coverCrop.square} source={coverCrop.source} />
+                        <CropPreview title="Страница события" aspect="aspect-[16/9]" crop={coverCrop.wide} source={coverCrop.source} />
+                      </div>
+                      <CropControls
+                        title="Обрезка для афиши"
+                        crop={coverCrop.square}
+                        onChange={(patch) => setCoverCrop((current) => current ? { ...current, square: { ...current.square, ...patch } } : current)}
+                      />
+                      <CropControls
+                        title="Обрезка внутри страницы"
+                        crop={coverCrop.wide}
+                        onChange={(patch) => setCoverCrop((current) => current ? { ...current, wide: { ...current.wide, ...patch } } : current)}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={applyCoverCrop} className="focus-ring rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white">Применить обложку</button>
+                        <button type="button" onClick={() => setCoverCrop(null)} className="focus-ring rounded-[8px] bg-white px-3 py-2 text-sm font-semibold text-ink">Готово</button>
+                      </div>
+                    </div>
+                  ) : null}
                   {form.cover ? (
                     <div className="overflow-hidden rounded-[8px] border border-line bg-mist">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={form.cover} alt="Предпросмотр обложки" className="h-48 w-full object-cover" />
+                      <img src={form.cover} alt="Предпросмотр обложки" className="aspect-square w-full object-cover" />
                       {form.coverFileName ? <p className="px-3 py-2 text-xs font-semibold text-slate-500">{form.coverFileName}</p> : null}
+                    </div>
+                  ) : null}
+                  {form.coverWide ? (
+                    <div className="overflow-hidden rounded-[8px] border border-line bg-mist">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={form.coverWide} alt="Предпросмотр широкой обложки" className="aspect-[16/9] w-full object-cover" />
+                      {form.coverWideFileName ? <p className="px-3 py-2 text-xs font-semibold text-slate-500">{form.coverWideFileName}</p> : null}
                     </div>
                   ) : null}
                 </div>
@@ -377,6 +449,10 @@ export default function NewEventPage() {
                     </div>
                   ))}
                 </div>
+                <button type="button" onClick={addPageBlock} className="focus-ring flex w-full items-center justify-center gap-2 rounded-[8px] bg-ink px-4 py-3 text-sm font-semibold text-white">
+                  <Plus size={17} />
+                  Добавить блок
+                </button>
               </FormBlock>
             </div>
 
@@ -435,15 +511,15 @@ export default function NewEventPage() {
                     Сохранить страницу
                   </button>
                 </div>
+                {saved ? (
+                  <div className="flex items-center justify-center gap-2 rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm">
+                    <CheckCircle2 size={18} />
+                    Событие сохранено
+                  </div>
+                ) : null}
               </FormBlock>
             </aside>
           </form>
-          {saved ? (
-            <div className="fixed bottom-5 right-5 z-[130] flex max-w-sm items-center gap-2 rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-soft">
-              <CheckCircle2 size={18} />
-              Событие сохранено
-            </div>
-          ) : null}
         </Card>
       </div>
     </main>
@@ -494,6 +570,71 @@ function MultiChoiceGroup({
   );
 }
 
+function CropPreview({ title, aspect, crop, source }: { title: string; aspect: string; crop: CropSettings; source: string }) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold uppercase text-slate-500">{title}</p>
+      <div className={`${aspect} overflow-hidden rounded-[8px] border border-apple/30 bg-white shadow-sm`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={source}
+          alt=""
+          className="h-full w-full object-cover"
+          style={{
+            objectPosition: `${50 + crop.x}% ${50 + crop.y}%`,
+            transform: `scale(${crop.zoom})`
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CropControls({ title, crop, onChange }: { title: string; crop: CropSettings; onChange: (patch: Partial<CropSettings>) => void }) {
+  return (
+    <div className="grid gap-2 rounded-[8px] border border-line bg-white p-3">
+      <p className="text-sm font-semibold text-ink">{title}</p>
+      <CropSlider label="Масштаб" min={1} max={2.4} step={0.05} value={crop.zoom} onChange={(zoom) => onChange({ zoom })} />
+      <CropSlider label="Сдвиг по горизонтали" min={-50} max={50} step={1} value={crop.x} onChange={(x) => onChange({ x })} />
+      <CropSlider label="Сдвиг по вертикали" min={-50} max={50} step={1} value={crop.y} onChange={(y) => onChange({ y })} />
+    </div>
+  );
+}
+
+function CropSlider({
+  label,
+  min,
+  max,
+  step,
+  value,
+  onChange
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="grid gap-1 text-xs font-semibold text-slate-600">
+      <span className="flex items-center justify-between gap-2">
+        <span>{label}</span>
+        <span className="rounded bg-white px-2 py-0.5 text-slate-500">{value}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full"
+      />
+    </label>
+  );
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -529,15 +670,6 @@ function uniqueValues(values: string[]) {
   return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }
 
-function sortClassNames(values: string[]) {
-  return uniqueValues(values).sort((first, second) => {
-    const firstNumber = Number(first.match(/\d{1,2}/)?.[0] ?? 0);
-    const secondNumber = Number(second.match(/\d{1,2}/)?.[0] ?? 0);
-    if (firstNumber !== secondNumber) return firstNumber - secondNumber;
-    return first.localeCompare(second, "ru", { numeric: true });
-  });
-}
-
 function splitLines(value: string) {
   return value
     .split(/\n+/)
@@ -568,35 +700,64 @@ function parsePageBlocks(value: string | undefined, description: string): PageCo
   }));
 }
 
-function imageFileToSquareDataUrl(file: File): Promise<string> {
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject();
+    reader.readAsDataURL(file);
+  });
+}
+
+function defaultCrop() {
+  return { zoom: 1, x: 0, y: 0 };
+}
+
+function coverFileNames(title: string, originalName: string) {
+  const source = slugify(title.replace(/\.[^.]+$/, "")) || slugify(originalName.replace(/\.[^.]+$/, "")) || `event-${Date.now()}`;
+  return {
+    square: `${source}-cover-square.jpg`,
+    wide: `${source}-cover-wide.jpg`
+  };
+}
+
+function cropImageToDataUrl(source: string, crop: CropSettings, variant: "square" | "wide"): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const url = URL.createObjectURL(file);
     image.onload = () => {
       try {
-        const size = 900;
-        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
-        const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
-        const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+        const output = variant === "square" ? { width: 720, height: 720 } : { width: 1280, height: 720 };
+        const aspect = output.width / output.height;
+        const zoom = clamp(crop.zoom, 1, 2.4);
+        const imageAspect = image.naturalWidth / image.naturalHeight;
+        const baseWidth = imageAspect > aspect ? image.naturalHeight * aspect : image.naturalWidth;
+        const baseHeight = imageAspect > aspect ? image.naturalHeight : image.naturalWidth / aspect;
+        const sourceWidth = baseWidth / zoom;
+        const sourceHeight = baseHeight / zoom;
+        const maxX = Math.max(0, image.naturalWidth - sourceWidth);
+        const maxY = Math.max(0, image.naturalHeight - sourceHeight);
+        const sourceX = clamp((image.naturalWidth - sourceWidth) / 2 + (crop.x / 100) * maxX, 0, maxX);
+        const sourceY = clamp((image.naturalHeight - sourceHeight) / 2 + (crop.y / 100) * maxY, 0, maxY);
         const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = output.width;
+        canvas.height = output.height;
         const context = canvas.getContext("2d");
         if (!context) throw new Error("Canvas is unavailable");
-        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, output.width, output.height);
+        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, output.width, output.height);
+        resolve(canvas.toDataURL("image/jpeg", variant === "square" ? 0.76 : 0.72));
       } catch {
         reject();
-      } finally {
-        URL.revokeObjectURL(url);
       }
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject();
-    };
-    image.src = url;
+    image.onerror = () => reject();
+    image.src = source;
   });
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 const translit: Record<string, string> = {

@@ -1,6 +1,7 @@
 import { cookieName, verifyAdminSession } from "@/lib/admin-auth";
-import { readAdminStore, updateAdminStore } from "@/lib/admin-store";
+import { mutateAdminStore, readAdminStore } from "@/lib/admin-store";
 import { noStoreHeaders } from "@/lib/cache";
+import { deleteMediaObject, isSafeMediaKey, mediaFileUrl } from "@/lib/media-storage";
 import type { ApplicationItem, EventItem } from "@/lib/types";
 import { NextResponse } from "next/server";
 
@@ -18,9 +19,18 @@ export async function POST(request: Request) {
     const body = await request.json() as Record<string, unknown>;
     const applicationId = stringValue(body.applicationId) || `app-${Date.now()}`;
     const createdAt = stringValue(body.createdAt) || new Date().toISOString();
+    const updatedAt = createdAt;
     const eventTitle = pickString(body, ["eventTitle", "contest", "Мероприятие"]) || "Мероприятие";
     const store = await readAdminStore();
-    const fileRules = fileRulesForRequest(body, store.eventPages as Array<Record<string, unknown>>);
+    const eventPage = eventPageForRequest(body, store.eventPages as Array<Record<string, unknown>>);
+    if (eventPage && eventPage.acceptApplications === false) {
+      return NextResponse.json({ message: "Приём заявок на это мероприятие закрыт." }, { status: 400, headers: noStoreHeaders });
+    }
+    const deadline = stringValue(eventPage?.deadline) || pickString(body, ["eventDeadline"]);
+    if (deadline && isApplicationDeadlinePassed(deadline)) {
+      return NextResponse.json({ message: "Срок приёма заявок на это мероприятие завершён." }, { status: 400, headers: noStoreHeaders });
+    }
+    const fileRules = fileRulesForEventPage(eventPage);
     const fileCheck = validateFiles(body.files, fileRules);
     if (!fileCheck.ok) {
       return NextResponse.json({ message: fileCheck.message }, { status: 400, headers: noStoreHeaders });
@@ -32,7 +42,9 @@ export async function POST(request: Request) {
       eventId: pickString(body, ["eventId"]),
       eventTitle,
       eventType: eventTypeValue(body.eventType),
+      eventDeadline: deadline,
       createdAt,
+      updatedAt,
       contest: pickString(body, ["contest", "eventTitle"]) || eventTitle,
       className: pickString(body, ["className", "класс", "Класс"]),
       student: pickString(body, ["student", "ФИО участника", "фио участника"]),
@@ -43,10 +55,10 @@ export async function POST(request: Request) {
       comment: pickString(body, ["comment", "комментарий", "Комментарий"]),
       consent: Boolean(body.consent),
       status: "new",
-      files: normalizeFiles(body.files, fileRules)
+      files: normalizeFiles(body.files, fileRules, createdAt)
     };
 
-    await updateAdminStore({ applications: [application, ...store.applications] });
+    await mutateAdminStore((current) => ({ applications: [application, ...current.applications] }));
 
     return NextResponse.json(application, { status: 201, headers: noStoreHeaders });
   } catch {
@@ -64,23 +76,23 @@ export async function PATCH(request: Request) {
     const id = pickString(body, ["id", "applicationId"]);
     if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400, headers: noStoreHeaders });
 
-    const store = await readAdminStore();
-    const nextApplications = store.applications.map((item) => {
-      if (item.id !== id && item.applicationId !== id) return item;
-      return {
-        ...item,
-        status: applicationStatusValue(body.status) ?? item.status,
-        student: pickString(body, ["student"]) || item.student,
-        className: pickString(body, ["className"]) || item.className,
-        mentor: pickString(body, ["mentor"]) || item.mentor,
-        nomination: pickString(body, ["nomination"]) || item.nomination,
-        contact: pickString(body, ["contact"]) || item.contact,
-        workUrl: pickString(body, ["workUrl"]) || item.workUrl,
-        comment: pickString(body, ["comment"]) || item.comment
-      };
-    });
-
-    const saved = await updateAdminStore({ applications: nextApplications });
+    const saved = await mutateAdminStore((current) => ({
+      applications: current.applications.map((item) => {
+        if (item.id !== id && item.applicationId !== id) return item;
+        return {
+          ...item,
+          updatedAt: new Date().toISOString(),
+          status: applicationStatusValue(body.status) ?? item.status,
+          student: pickString(body, ["student"]) || item.student,
+          className: pickString(body, ["className"]) || item.className,
+          mentor: pickString(body, ["mentor"]) || item.mentor,
+          nomination: pickString(body, ["nomination"]) || item.nomination,
+          contact: pickString(body, ["contact"]) || item.contact,
+          workUrl: pickString(body, ["workUrl"]) || item.workUrl,
+          comment: pickString(body, ["comment"]) || item.comment
+        };
+      })
+    }));
     return NextResponse.json(saved.applications, { headers: noStoreHeaders });
   } catch {
     return NextResponse.json({ message: "Не удалось обновить заявку." }, { status: 500, headers: noStoreHeaders });
@@ -97,7 +109,12 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ message: "Не указана заявка." }, { status: 400, headers: noStoreHeaders });
 
     const store = await readAdminStore();
-    const saved = await updateAdminStore({ applications: store.applications.filter((item) => item.id !== id && item.applicationId !== id) });
+    const application = store.applications.find((item) => item.id === id || item.applicationId === id);
+    const storedKeys = (application?.files ?? []).map((file) => file.key).filter((key): key is string => Boolean(key));
+    await Promise.all(storedKeys.map((key) => deleteMediaObject(key)));
+    const saved = await mutateAdminStore((current) => ({
+      applications: current.applications.filter((item) => item.id !== id && item.applicationId !== id)
+    }));
     return NextResponse.json(saved.applications, { headers: noStoreHeaders });
   } catch {
     return NextResponse.json({ message: "Не удалось удалить заявку." }, { status: 500, headers: noStoreHeaders });
@@ -130,14 +147,22 @@ type FileRules = {
   allowedFiles: string[];
 };
 
-function fileRulesForRequest(body: Record<string, unknown>, eventPages: Array<Record<string, unknown>>): FileRules {
+function eventPageForRequest(body: Record<string, unknown>, eventPages: Array<Record<string, unknown>>) {
   const eventId = pickString(body, ["eventId"]);
   const slug = eventId.startsWith("manual-") ? eventId.slice("manual-".length) : "";
-  const eventPage = slug ? eventPages.find((item) => stringValue(item.slug) === slug) : undefined;
+  return slug ? eventPages.find((item) => stringValue(item.slug) === slug) : undefined;
+}
+
+function fileRulesForEventPage(eventPage: Record<string, unknown> | undefined): FileRules {
   return {
     allowFiles: eventPage?.allowFiles !== false,
     allowedFiles: parseAllowedFiles(stringValue(eventPage?.allowedFiles))
   };
+}
+
+function isApplicationDeadlinePassed(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return Date.now() > Date.parse(`${value}T23:59:59+04:00`);
 }
 
 function parseAllowedFiles(value: string) {
@@ -171,7 +196,7 @@ function validateFiles(value: unknown, rules: FileRules) {
   return { ok: true as const };
 }
 
-function normalizeFiles(value: unknown, rules: FileRules): ApplicationItem["files"] {
+function normalizeFiles(value: unknown, rules: FileRules, createdAt: string): ApplicationItem["files"] {
   if (!Array.isArray(value)) return [];
   const maxFiles = 5;
   const maxDataUrlLength = 1_600_000;
@@ -184,11 +209,19 @@ function normalizeFiles(value: unknown, rules: FileRules): ApplicationItem["file
       if (!name) return null;
       if (!rules.allowFiles || !isAllowedFile(name, stringValue(file.type), rules.allowedFiles)) return null;
       const dataUrl = stringValue(file.dataUrl);
+      const keyValue = stringValue(file.key);
+      const key = keyValue.startsWith("applications/") && isSafeMediaKey(keyValue) ? keyValue : "";
+      const uploadedAt = isoDateValue(file.uploadedAt) || createdAt;
+      const deleteAfter = isoDateValue(file.deleteAfter) || addYears(uploadedAt, 1);
       return {
         name: safeFileName(name),
         size: typeof file.size === "number" ? file.size : 0,
         type: stringValue(file.type),
-        dataUrl: dataUrl.length <= maxDataUrlLength ? dataUrl || undefined : undefined
+        dataUrl: dataUrl.length <= maxDataUrlLength ? dataUrl || undefined : undefined,
+        key: key || undefined,
+        url: key ? mediaFileUrl(key) : undefined,
+        uploadedAt,
+        deleteAfter
       };
     })
     .filter((item): item is NonNullable<ApplicationItem["files"]>[number] => item !== null);
@@ -198,6 +231,19 @@ function isAllowedFile(name: string, type: string, allowedFiles: string[]) {
   const extension = name.split(".").pop()?.toLowerCase() || "";
   if (allowedFiles.includes(extension)) return true;
   return type.startsWith("image/") && allowedFiles.some((item) => ["jpg", "jpeg", "png", "webp"].includes(item));
+}
+
+function isoDateValue(value: unknown) {
+  const text = stringValue(value);
+  if (!text) return "";
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+function addYears(value: string, years: number) {
+  const date = new Date(value);
+  date.setUTCFullYear(date.getUTCFullYear() + years);
+  return date.toISOString();
 }
 
 function safeFileName(name: string) {

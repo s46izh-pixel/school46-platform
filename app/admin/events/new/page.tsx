@@ -1,11 +1,13 @@
 "use client";
 
 import { Card, SectionTitle } from "@/components/card";
-import { getAdminStore, patchAdminStore } from "@/lib/admin-store-client";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { getAdminStore, mutateAdminEventPage } from "@/lib/admin-store-client";
 import { uniqueClasses } from "@/lib/class-utils";
+import { uploadMediaFile } from "@/lib/media-upload-client";
 import { classes } from "@/lib/mock-data";
 import type { EventItem, ScheduleLesson } from "@/lib/types";
-import { ArrowLeft, CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, Download, Eye, EyeOff, FileUp, ImageIcon, Link2, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -33,7 +35,7 @@ const statuses = [
 
 type PageContentBlock = {
   id: string;
-  kind: "position" | "participation" | "materials" | "custom";
+  kind: "position" | "participation" | "materials" | "links" | "custom";
   title: string;
   text: string;
   items: string[];
@@ -115,6 +117,7 @@ export default function NewEventPage() {
   const [sourceMode, setSourceMode] = useState<"new" | "copy" | "edit">("new");
   const [sourceSlug, setSourceSlug] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [classOptions, setClassOptions] = useState(() => uniqueClasses(classes, classes));
   const [classCategoryOptions, setClassCategoryOptions] = useState(defaultClassCategoryOptions);
   const [coverCrop, setCoverCrop] = useState<CoverCrop | null>(null);
@@ -127,7 +130,7 @@ export default function NewEventPage() {
     const edit = params.get("edit");
 
     if (copy) {
-      getAdminStore().then((store) => {
+      getAdminStore({ requireServer: true }).then((store) => {
         const draft = findSavedDraft(store.eventPages as EventPageDraft[], copy);
         setSourceMode("copy");
         setSourceSlug(copy);
@@ -136,17 +139,17 @@ export default function NewEventPage() {
           slug: `${copy}-copy`,
           title: draft?.title ? `Копия: ${draft.title}` : "Копия мероприятия"
         }));
-      });
+      }).catch((error) => setSaveError(error instanceof Error ? error.message : "Не удалось загрузить мероприятие."));
       return;
     }
 
     if (edit) {
-      getAdminStore().then((store) => {
+      getAdminStore({ requireServer: true }).then((store) => {
         const draft = findSavedDraft(store.eventPages as EventPageDraft[], edit);
         setSourceMode("edit");
         setSourceSlug(edit);
         setForm((current) => ({ ...(draft ?? current), slug: edit }));
-      });
+      }).catch((error) => setSaveError(error instanceof Error ? error.message : "Не удалось загрузить мероприятие."));
     }
   }, []);
 
@@ -220,6 +223,29 @@ export default function NewEventPage() {
     savePageBlocks(pageBlocks.filter((block) => block.id !== id));
   }
 
+  function addBlockLink(id: string) {
+    const block = pageBlocks.find((item) => item.id === id);
+    if (!block) return;
+    updatePageBlock(id, { items: [...block.items, "Новая ссылка|https://"] });
+  }
+
+  function updateBlockLink(id: string, index: number, field: "label" | "href", value: string) {
+    const block = pageBlocks.find((item) => item.id === id);
+    if (!block) return;
+    const items = block.items.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const link = parseBlockLink(item);
+      return serializeBlockLink({ ...link, [field]: value });
+    });
+    updatePageBlock(id, { items });
+  }
+
+  function removeBlockLink(id: string, index: number) {
+    const block = pageBlocks.find((item) => item.id === id);
+    if (!block) return;
+    updatePageBlock(id, { items: block.items.filter((_, itemIndex) => itemIndex !== index) });
+  }
+
   function toggleParticipantGroup(value: string) {
     const selected = selectedParticipantGroups.includes(value)
       ? selectedParticipantGroups.filter((item) => item !== value)
@@ -285,13 +311,29 @@ export default function NewEventPage() {
 
   async function saveDraft(event: FormEvent) {
     event.preventDefault();
-    const store = await getAdminStore();
-    const savedDrafts = store.eventPages as EventPageDraft[];
-    const nextDraft = { ...form, slug: form.slug || slugify(form.title) || `event-${Date.now()}` };
-    const withoutCurrent = savedDrafts.filter((item) => item.slug !== nextDraft.slug);
-    await patchAdminStore({ eventPages: [...withoutCurrent, nextDraft] });
-    setForm(nextDraft);
-    setSaved(true);
+    setSaveError("");
+    if (form.acceptApplications && !form.deadline) {
+      setSaved(false);
+      setSaveError("Укажите дату окончания приёма заявок.");
+      return;
+    }
+    try {
+      const draftWithSlug = { ...form, slug: form.slug || slugify(form.title) || `event-${Date.now()}` };
+      const nextDraft = await uploadEventCovers(draftWithSlug);
+      const result = await mutateAdminEventPage({
+        action: "upsert",
+        eventPage: nextDraft,
+        sourceSlug: sourceMode === "edit" ? sourceSlug : undefined
+      });
+      const savedDraft = (result.eventPage ?? nextDraft) as EventPageDraft;
+      setForm(savedDraft);
+      setSourceSlug(savedDraft.slug);
+      setSourceMode("edit");
+      setSaved(true);
+    } catch (error) {
+      setSaved(false);
+      setSaveError(error instanceof Error ? error.message : "Не удалось сохранить мероприятие. Данные на сервере не изменены.");
+    }
   }
 
   function downloadSettings() {
@@ -409,10 +451,7 @@ export default function NewEventPage() {
                     </div>
                   ) : null}
                 </div>
-                <label className="grid gap-2 text-sm font-semibold text-slate-600">
-                  Краткое описание для верхней части страницы
-                  <textarea value={form.description} onChange={(event) => updateField("description", event.target.value)} rows={4} placeholder="Коротко: о чём мероприятие, для кого оно и зачем участвовать..." className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
-                </label>
+                <RichTextEditor value={form.description} onChange={(value) => updateField("description", value)} label="Краткое описание для верхней части страницы" placeholder="Коротко: о чём мероприятие, для кого оно и зачем участвовать..." minHeight={150} />
               </FormBlock>
 
               <FormBlock title="Блоки страницы">
@@ -431,6 +470,7 @@ export default function NewEventPage() {
                           <option value="position">Положение</option>
                           <option value="participation">Участие</option>
                           <option value="materials">Материалы</option>
+                          <option value="links">Ссылки</option>
                           <option value="custom">Свой блок</option>
                         </select>
                         <div className="flex gap-2">
@@ -444,8 +484,29 @@ export default function NewEventPage() {
                         </div>
                       </div>
                       <input value={block.title} onChange={(event) => updatePageBlock(block.id, { title: event.target.value })} placeholder="Название блока" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
-                      <textarea value={block.text} onChange={(event) => updatePageBlock(block.id, { text: event.target.value })} rows={5} placeholder="Текст блока" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
-                      <textarea value={block.items.join("\n")} onChange={(event) => updatePageBlock(block.id, { items: splitLines(event.target.value) })} rows={3} placeholder="Дополнительные пункты или материалы, каждый с новой строки" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                      <RichTextEditor value={block.text} onChange={(value) => updatePageBlock(block.id, { text: value })} label="Текст блока" placeholder="Введите текст блока..." minHeight={190} />
+                      {block.kind === "links" ? (
+                        <div className="grid gap-3 rounded-[8px] border border-line bg-mist p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="flex items-center gap-2 text-sm font-semibold text-ink"><Link2 size={16} /> Кликабельные ссылки</p>
+                            <button type="button" onClick={() => addBlockLink(block.id)} className="focus-ring flex items-center gap-2 rounded-[8px] bg-white px-3 py-2 text-sm font-semibold text-ink">
+                              <Plus size={16} /> Добавить ссылку
+                            </button>
+                          </div>
+                          {block.items.length ? block.items.map((item, index) => {
+                            const link = parseBlockLink(item);
+                            return (
+                              <div key={`${block.id}-link-${index}`} className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_40px]">
+                                <input value={link.label} onChange={(event) => updateBlockLink(block.id, index, "label", event.target.value)} placeholder="Название ссылки" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                                <input value={link.href} onChange={(event) => updateBlockLink(block.id, index, "href", event.target.value)} placeholder="https://example.ru" inputMode="url" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                                <button type="button" onClick={() => removeBlockLink(block.id, index)} className="focus-ring grid size-10 self-center place-items-center rounded-[8px] bg-rose-50 text-rose-700" aria-label="Удалить ссылку"><Trash2 size={16} /></button>
+                              </div>
+                            );
+                          }) : <p className="rounded-[8px] bg-white px-3 py-3 text-sm text-slate-500">Добавьте первую ссылку.</p>}
+                        </div>
+                      ) : (
+                        <textarea value={block.items.join("\n")} onChange={(event) => updatePageBlock(block.id, { items: splitLines(event.target.value) })} rows={3} placeholder="Дополнительные пункты или материалы, каждый с новой строки" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -462,7 +523,10 @@ export default function NewEventPage() {
                   Принимать заявки
                   <input checked={form.acceptApplications} onChange={(event) => updateField("acceptApplications", event.target.checked)} type="checkbox" />
                 </label>
-                <input value={form.deadline} onChange={(event) => updateField("deadline", event.target.value)} type="date" className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                <label className="grid gap-2 text-sm font-semibold text-slate-600">
+                  Дата окончания приёма заявок
+                  <input value={form.deadline} onChange={(event) => updateField("deadline", event.target.value)} type="date" required={form.acceptApplications} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3" />
+                </label>
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-slate-600">Поля заявки</p>
@@ -515,6 +579,11 @@ export default function NewEventPage() {
                   <div className="flex items-center justify-center gap-2 rounded-[8px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm">
                     <CheckCircle2 size={18} />
                     Событие сохранено
+                  </div>
+                ) : null}
+                {saveError ? (
+                  <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                    {saveError} Уже созданные мероприятия не изменены.
                   </div>
                 ) : null}
               </FormBlock>
@@ -677,6 +746,16 @@ function splitLines(value: string) {
     .filter(Boolean);
 }
 
+function parseBlockLink(value: string) {
+  const separator = value.indexOf("|");
+  if (separator < 0) return { label: value.trim(), href: "" };
+  return { label: value.slice(0, separator).trim(), href: value.slice(separator + 1).trim() };
+}
+
+function serializeBlockLink(link: { label: string; href: string }) {
+  return `${link.label.replaceAll("|", " ").trim()}|${link.href.trim()}`;
+}
+
 function parsePageBlocks(value: string | undefined, description: string): PageContentBlock[] {
   try {
     const parsed = JSON.parse(value || "[]") as PageContentBlock[];
@@ -707,6 +786,33 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject();
     reader.readAsDataURL(file);
   });
+}
+
+async function uploadEventCovers(draft: EventPageDraft): Promise<EventPageDraft> {
+  const next = { ...draft };
+  if (next.cover.startsWith("data:")) {
+    const uploaded = await uploadMediaFile(await dataUrlToFile(next.cover, next.coverFileName || "event-cover-square.jpg"), {
+      scope: "events",
+      slug: next.slug,
+      variant: "square"
+    });
+    if (uploaded?.url) next.cover = uploaded.url;
+  }
+  if (next.coverWide.startsWith("data:")) {
+    const uploaded = await uploadMediaFile(await dataUrlToFile(next.coverWide, next.coverWideFileName || "event-cover-wide.jpg"), {
+      scope: "events",
+      slug: next.slug,
+      variant: "wide"
+    });
+    if (uploaded?.url) next.coverWide = uploaded.url;
+  }
+  return next;
+}
+
+async function dataUrlToFile(dataUrl: string, name: string) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], name, { type: blob.type || "image/jpeg" });
 }
 
 function defaultCrop() {

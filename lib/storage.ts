@@ -7,6 +7,7 @@ export const defaultPreferences: UserPreferences = {
   selectedClass: "8а",
   selectedClasses: ["8а"],
   selectedTeacher: "Иванова Е. А.",
+  selectedTeacher2: "",
   theme: "light",
   design: "silver",
   userName: "",

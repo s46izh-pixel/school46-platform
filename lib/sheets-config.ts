@@ -1,3 +1,8 @@
+export const eventSheetNames = {
+  primary: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "Основной",
+  next: process.env.GOOGLE_EVENTS_NEXT_SHEET_NAME ?? "ОСН.сл.мес"
+};
+
 export const sheetsConfig = {
   sources: {
     news: {
@@ -6,14 +11,22 @@ export const sheetsConfig = {
     },
     events: {
       spreadsheetId: process.env.GOOGLE_EVENTS_SHEET_ID ?? "1lSH-KBbhocfYSadrJUQUyJvo2Xlf7aj72VXsv1WYiL0",
-      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "Основной"
+      sheet: eventSheetNames.primary
     },
     actions: {
       spreadsheetId: process.env.GOOGLE_EVENTS_SHEET_ID ?? "1lSH-KBbhocfYSadrJUQUyJvo2Xlf7aj72VXsv1WYiL0",
-      sheet: process.env.GOOGLE_EVENTS_SHEET_NAME ?? "Основной"
+      sheet: eventSheetNames.primary
+    },
+    homeQuotes: {
+      spreadsheetId: process.env.GOOGLE_QUOTES_SHEET_ID ?? "19pAmgo3XM1Xo53sA6-kZS0Y1xFHraF9jbOPtOSB9wOs",
+      sheet: process.env.GOOGLE_HOME_QUOTES_SHEET_NAME ?? "Цитаты_ГЛАВНАЯ"
+    },
+    eventThoughts: {
+      spreadsheetId: process.env.GOOGLE_QUOTES_SHEET_ID ?? "19pAmgo3XM1Xo53sA6-kZS0Y1xFHraF9jbOPtOSB9wOs",
+      sheet: process.env.GOOGLE_EVENT_THOUGHTS_SHEET_NAME ?? "Мысль дня_СОБЫТИЯ"
     },
     applications: {
-      spreadsheetId: process.env.GOOGLE_APPLICATIONS_SHEET_ID ?? process.env.GOOGLE_SHEETS_ID ?? "",
+      spreadsheetId: process.env.GOOGLE_APPLICATIONS_SHEET_ID ?? process.env.GOOGLE_SHEETS_ID ?? "179lCdPI8cELOP4Zl5ny5mbcwcNKe6Bfrd54QppwpDG0",
       sheet: process.env.GOOGLE_APPLICATIONS_SHEET_NAME ?? "Заявки"
     },
     rating: {

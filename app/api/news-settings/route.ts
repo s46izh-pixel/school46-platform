@@ -9,11 +9,11 @@ export async function GET() {
   try {
     const store = await readAdminStore();
     return NextResponse.json(
-      { newsVisibility: store.newsVisibility, newsOverrides: publicNewsOverrides(store.newsOverrides) },
+      { newsVisibility: store.newsVisibility, newsOverrides: publicNewsOverrides(store.newsOverrides), newsDeleted: store.newsDeleted },
       { headers: shortApiCacheHeaders }
     );
   } catch {
-    return NextResponse.json({ newsVisibility: {}, newsOverrides: {} }, { headers: shortApiCacheHeaders });
+    return NextResponse.json({ newsVisibility: {}, newsOverrides: {}, newsDeleted: {} }, { headers: shortApiCacheHeaders });
   }
 }
 

@@ -7,7 +7,7 @@ export async function GET() {
   try {
     return NextResponse.json(publicAdminStore(await readAdminStore()), { headers: noStoreHeaders });
   } catch {
-    return NextResponse.json({ eventPages: [], calendarTemplateVisibility: {}, newsVisibility: {}, newsOverrides: {}, homeSections: {} }, { headers: noStoreHeaders });
+    return NextResponse.json({ message: "Не удалось загрузить данные админки. Проверьте подключение к базе данных." }, { status: 500, headers: noStoreHeaders });
   }
 }
 

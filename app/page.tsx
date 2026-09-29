@@ -12,7 +12,7 @@ import { UserPreferencesPanel } from "@/components/user-preferences-panel";
 import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
 import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
-import { getDataset, getScheduleChanges } from "@/lib/sheets";
+import { getDataset, getHomeQuotes, getScheduleChanges } from "@/lib/sheets";
 import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesson } from "@/lib/types";
 import { Bell } from "lucide-react";
 import Link from "next/link";
@@ -20,12 +20,13 @@ import Link from "next/link";
 export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function Home() {
-  const [lessons, bells, rating, changes, events] = await Promise.all([
+  const [lessons, bells, rating, changes, events, homeQuotes] = await Promise.all([
     getDataset("schedule") as Promise<ScheduleLesson[]>,
     getDataset("bells") as Promise<BellSchedule[]>,
     getDataset("rating") as Promise<RatingItem[]>,
     getScheduleChanges() as Promise<ScheduleChange[]>,
-    getDataset("events") as Promise<EventItem[]>
+    getDataset("events") as Promise<EventItem[]>,
+    getHomeQuotes()
   ]);
   const publishedNews = news.filter((item) => item.status === "published");
   const leaders = getRatingLeaders(rating);
@@ -36,7 +37,7 @@ export default async function Home() {
       <main>
         <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 pt-10 sm:px-6 md:grid-cols-[1.1fr_0.9fr] lg:px-8">
           <div className="flex min-h-[520px] flex-col justify-center">
-            <HomeGreeting />
+            <HomeGreeting quotes={homeQuotes} />
             <h1 className="max-w-3xl text-5xl font-semibold tracking-normal text-ink md:text-7xl">
               Цифровая платформа школы
             </h1>

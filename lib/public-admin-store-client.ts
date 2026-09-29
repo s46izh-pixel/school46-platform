@@ -8,9 +8,14 @@ export async function getPublicHomeSections() {
 }
 
 export async function getPublicNewsSettings() {
-  return fetchJson<{ newsVisibility: AdminStore["newsVisibility"]; newsOverrides: Record<string, NewsItem> }>("/api/news-settings", {
+  return fetchJson<{
+    newsVisibility: AdminStore["newsVisibility"];
+    newsOverrides: Record<string, NewsItem>;
+    newsDeleted: AdminStore["newsDeleted"];
+  }>("/api/news-settings", {
     newsVisibility: {},
-    newsOverrides: {}
+    newsOverrides: {},
+    newsDeleted: {}
   });
 }
 

@@ -31,6 +31,7 @@ export function TodayOverview({
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
   const [now, setNow] = useState(() => new Date());
   const today = dayNames[new Date().getDay()];
+  const selectedTeachers = useMemo(() => Array.from(new Set([prefs.selectedTeacher, prefs.selectedTeacher2].filter(Boolean))), [prefs.selectedTeacher, prefs.selectedTeacher2]);
 
   useEffect(() => {
     function loadPreferences(event?: Event) {
@@ -55,9 +56,9 @@ export function TodayOverview({
   const changedTodayLessons = useMemo(
     () => changes
       .filter((lesson) => lesson.day === today)
-      .filter((lesson) => prefs.role === "teacher" ? lesson.teacher === prefs.selectedTeacher : lesson.className === prefs.selectedClass)
+      .filter((lesson) => prefs.role === "teacher" ? selectedTeachers.includes(lesson.teacher) : lesson.className === prefs.selectedClass)
       .sort((first, second) => first.number - second.number || first.className.localeCompare(second.className, "ru", { numeric: true })),
-    [changes, prefs.role, prefs.selectedClass, prefs.selectedTeacher, today]
+    [changes, prefs.role, prefs.selectedClass, selectedTeachers, today]
   );
   const overrideChanges = useMemo(
     () => changes
@@ -68,9 +69,9 @@ export function TodayOverview({
   const regularTodayLessons = useMemo(
     () => lessons
       .filter((lesson) => lesson.day === today)
-      .filter((lesson) => prefs.role === "teacher" ? lesson.teacher === prefs.selectedTeacher : lesson.className === prefs.selectedClass)
+      .filter((lesson) => prefs.role === "teacher" ? selectedTeachers.includes(lesson.teacher) : lesson.className === prefs.selectedClass)
       .sort((first, second) => first.number - second.number || first.className.localeCompare(second.className, "ru", { numeric: true })),
-    [lessons, prefs.role, prefs.selectedClass, prefs.selectedTeacher, today]
+    [lessons, prefs.role, prefs.selectedClass, selectedTeachers, today]
   );
   const todayLessons = useMemo(
     () => mergeLessonsWithChanges(regularTodayLessons, changedTodayLessons, overrideChanges),
@@ -96,7 +97,7 @@ export function TodayOverview({
   }).slice(0, 3), [ratingLeaders]);
 
   const title = prefs.role === "teacher"
-    ? `${todayLessons.length} уроков у педагога`
+    ? `${todayLessons.length} уроков у ${selectedTeachers.length > 1 ? "педагогов" : "педагога"}`
     : `${todayLessons.length} уроков у ${prefs.selectedClass}`;
   const progressText = todayLessons.length
     ? remainingLessonsCount

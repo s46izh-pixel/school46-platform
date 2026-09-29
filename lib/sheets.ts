@@ -1,6 +1,6 @@
 import { actions, applications, bells, events, lessons, news, rating } from "./mock-data";
-import { DATA_REVALIDATE_SECONDS, SCHEDULE_REVALIDATE_SECONDS } from "./cache";
-import { sheetsConfig } from "./sheets-config";
+import { DATA_REVALIDATE_SECONDS, EVENTS_REVALIDATE_SECONDS, QUOTES_REVALIDATE_SECONDS, SCHEDULE_REVALIDATE_SECONDS } from "./cache";
+import { eventSheetNames, sheetsConfig } from "./sheets-config";
 import type { EventItem, RatingItem, RatingSheet, ScheduleChange, ScheduleLesson } from "./types";
 
 export type DatasetName = keyof typeof sheetsConfig.sources;
@@ -15,6 +15,8 @@ const mockDatasets = {
   rating,
   schedule: lessons,
   bells,
+  homeQuotes: [],
+  eventThoughts: [],
   preferences: []
 };
 
@@ -94,20 +96,69 @@ export async function getMonthlyEventNotes(): Promise<EventItem[]> {
   if (!source.spreadsheetId) return [];
 
   try {
-    const csv = await readGoogleSheetCsv(source.spreadsheetId, source.sheet);
-    return mapEventCalendarSheet(parseCsv(csv).filter((row) => row.some(Boolean))).monthly;
+    const calendars = await readEventCalendars(source.spreadsheetId, source.sheet);
+    return uniqueEvents(calendars.flatMap((calendar) => calendar.monthly));
+  } catch {
+    return [];
+  }
+}
+
+export async function getEventCalendarMonths(): Promise<string[]> {
+  const source = sheetsConfig.sources.events;
+  if (!source.spreadsheetId) return [];
+
+  try {
+    const calendars = await readEventCalendars(source.spreadsheetId, source.sheet);
+    return Array.from(new Set(calendars.map((calendar) => calendar.monthKey).filter(Boolean))).sort();
+  } catch {
+    return [];
+  }
+}
+
+export async function getHomeQuotes(): Promise<string[]> {
+  return getPhraseSheet("homeQuotes");
+}
+
+export async function getEventThoughts(): Promise<string[]> {
+  return getPhraseSheet("eventThoughts");
+}
+
+async function getPhraseSheet(name: "homeQuotes" | "eventThoughts") {
+  const source = sheetsConfig.sources[name];
+  if (!source.spreadsheetId) return [];
+
+  try {
+    const csv = await readGoogleSheetCsv(source.spreadsheetId, source.sheet, QUOTES_REVALIDATE_SECONDS, true);
+    return Array.from(new Set(parseCsv(csv).flatMap((row) => row).map((value) => value.trim()).filter(Boolean)));
   } catch {
     return [];
   }
 }
 
 async function getEventDatasetFromSource(spreadsheetId: string, sheet: string, onlyActions: boolean) {
-  const csv = await readGoogleSheetCsv(spreadsheetId, sheet);
-  const rows = parseCsv(csv).filter((row) => row.some(Boolean));
-  if (!rows.length) return onlyActions ? actions : events;
-  const calendar = mapEventCalendarSheet(rows);
-  const parsed = calendar.events.length ? calendar.events : mapEventRows(csvToObjects(csv), onlyActions);
+  const calendars = await readEventCalendars(spreadsheetId, sheet);
+  const parsed = uniqueEvents(calendars.flatMap((calendar) => calendar.events));
   return parsed.filter((item) => (onlyActions ? item.type === "action" || item.type === "contest" : true));
+}
+
+async function readEventCalendars(spreadsheetId: string, primarySheet: string) {
+  const sheetNames = Array.from(new Set([primarySheet, eventSheetNames.next].map((item) => item.trim()).filter(Boolean)));
+  const results = await Promise.allSettled(
+    sheetNames.map(async (sheetName) => {
+      const csv = await readGoogleSheetCsv(spreadsheetId, sheetName, EVENTS_REVALIDATE_SECONDS, true);
+      const rows = parseCsv(csv).filter((row) => row.some(Boolean));
+      return mapEventCalendarSheet(rows, sheetName);
+    })
+  );
+  const calendars = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  if (!calendars.length) throw new Error("Листы календаря недоступны");
+  return calendars;
+}
+
+function uniqueEvents(items: EventItem[]) {
+  const result = new Map<string, EventItem>();
+  for (const item of items) result.set(`${item.slug}|${item.startDate}|${item.endDate || ""}`, item);
+  return Array.from(result.values()).sort((first, second) => first.date.localeCompare(second.date));
 }
 
 export async function appendDatasetItem(name: DatasetName, item: unknown) {
@@ -120,8 +171,9 @@ export async function readGoogleSheet(spreadsheetId: string, sheet: string) {
   return csvToObjects(csv);
 }
 
-async function readGoogleSheetCsv(spreadsheetId: string, sheet: string, revalidate = DATA_REVALIDATE_SECONDS) {
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}`;
+async function readGoogleSheetCsv(spreadsheetId: string, sheet: string, revalidate = DATA_REVALIDATE_SECONDS, refreshGoogleCache = false) {
+  const cacheVersion = refreshGoogleCache ? `&_=${Math.floor(Date.now() / (revalidate * 1000))}` : "";
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}${cacheVersion}`;
   const response = await fetch(url, {
     next: { revalidate },
     signal: AbortSignal.timeout(SHEET_FETCH_TIMEOUT_MS)
@@ -321,11 +373,12 @@ function mapEventRows(rows: Array<Record<string, string>>, onlyActions: boolean)
     .filter((item) => (onlyActions ? item.type === "action" || item.type === "contest" : true));
 }
 
-function mapEventCalendarSheet(rows: string[][]): { events: EventItem[]; monthly: EventItem[] } {
+function mapEventCalendarSheet(rows: string[][], sourceName = "calendar"): { events: EventItem[]; monthly: EventItem[]; monthKey: string } {
   const events: EventItem[] = [];
   const monthly: EventItem[] = [];
   const month = detectCalendarMonth(rows[0] ?? []) || currentRussianMonth();
-  const year = new Date().getFullYear();
+  const year = detectCalendarYear(rows, month);
+  const sourceId = slugify(`${sourceName}-${month}-${year}`) || `calendar-${year}`;
 
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex].map((cell) => cell.trim());
@@ -338,7 +391,7 @@ function mapEventCalendarSheet(rows: string[][]): { events: EventItem[]; monthly
         if (!title || seen.has(title)) continue;
         seen.add(title);
         monthly.push(createEventItem({
-          id: `month-${monthly.length + 1}`,
+          id: `${sourceId}-month-${monthly.length + 1}`,
           title,
           date: toIsoDate(1, month, year),
           startDate: toIsoDate(1, month, year),
@@ -381,7 +434,7 @@ function mapEventCalendarSheet(rows: string[][]): { events: EventItem[]; monthly
       const startDate = parseRussianEventDate(startText, month, year) || toIsoDate(day, month, year);
       const endDate = parseRussianEventDate(endText, month, year);
       events.push(createEventItem({
-        id: `event-${events.length + 1}`,
+        id: `${sourceId}-event-${events.length + 1}`,
         title,
         date: startDate,
         startDate,
@@ -400,8 +453,14 @@ function mapEventCalendarSheet(rows: string[][]): { events: EventItem[]; monthly
 
   return {
     events: events.sort((first, second) => first.date.localeCompare(second.date)),
-    monthly
+    monthly,
+    monthKey: toMonthKey(month, year)
   };
+}
+
+function toMonthKey(monthName: string, year: number) {
+  const monthIndex = russianMonths.indexOf(normalizeRussianMonthName(monthName));
+  return monthIndex < 0 ? "" : `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
 }
 
 function createEventItem({
@@ -469,6 +528,23 @@ function detectCalendarMonth(row: string[]) {
   return russianMonths.find((month) => normalized.includes(month)) ?? "";
 }
 
+function detectCalendarYear(rows: string[][], month: string) {
+  const explicitYear = rows
+    .flat()
+    .join(" ")
+    .match(/\b(20\d{2})\b/)?.[1];
+  if (explicitYear) return Number(explicitYear);
+
+  const now = new Date();
+  const monthIndex = russianMonths.indexOf(normalizeRussianMonthName(month));
+  if (monthIndex < 0) return now.getFullYear();
+  return [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1]
+    .sort((first, second) => (
+      Math.abs(new Date(first, monthIndex, 1).getTime() - now.getTime()) -
+      Math.abs(new Date(second, monthIndex, 1).getTime() - now.getTime())
+    ))[0];
+}
+
 function currentRussianMonth() {
   return russianMonths[new Date().getMonth()];
 }
@@ -476,9 +552,9 @@ function currentRussianMonth() {
 const russianMonths = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
 
 function parseRussianEventDate(value: string, fallbackMonth: string, fallbackYear: number) {
-  const match = value.toLowerCase().match(/(\d{1,2})(?:\s+([а-яё]+))?/i);
+  const match = value.toLowerCase().match(/(\d{1,2})(?:\s+([а-яё]+))?(?:\s+(20\d{2}))?/i);
   if (!match) return "";
-  return toIsoDate(Number(match[1]), match[2] ?? fallbackMonth, fallbackYear);
+  return toIsoDate(Number(match[1]), match[2] ?? fallbackMonth, match[3] ? Number(match[3]) : fallbackYear);
 }
 
 function toIsoDate(day: number, monthName: string, year: number) {

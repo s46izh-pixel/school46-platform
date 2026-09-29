@@ -13,6 +13,7 @@
     "seed:admin-store": "node scripts/seed-admin-store-db.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1142.0",
     "@types/pg": "^8.23.1",
     "cross-env": "7.0.3",
     "lucide-react": "0.468.0",

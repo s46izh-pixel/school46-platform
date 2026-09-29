@@ -2,10 +2,12 @@
 
 import { ApplicationForm } from "@/components/application-form";
 import { PageHero, PageShell } from "@/components/page-shell";
+import { RichTextContent } from "@/components/rich-text-content";
 import { getPublicManualEvent } from "@/lib/public-admin-store-client";
+import { normalizePublicHref, richTextToPlainText } from "@/lib/rich-text";
 import type { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { CalendarDays, CheckCircle2, ClipboardList, FileText, ImageIcon, MapPin, Users } from "lucide-react";
+import { CalendarDays, CheckCircle2, ClipboardList, ExternalLink, FileText, ImageIcon, Link2, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -37,7 +39,7 @@ type ManualEventPageDraft = {
 
 type PageContentBlock = {
   id: string;
-  kind: "position" | "participation" | "materials" | "custom";
+  kind: "position" | "participation" | "materials" | "links" | "custom";
   title: string;
   text: string;
   items: string[];
@@ -108,9 +110,11 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
     );
   }
 
+  const applicationDeadlinePassed = Boolean(event.applicationDeadline && isApplicationDeadlinePassed(event.applicationDeadline));
+
   return (
     <PageShell>
-      <PageHero eyebrow={event.category} title={event.title} text={event.description || "Подробная страница мероприятия: сроки, участники, положение и заявка."} />
+      <PageHero eyebrow={event.category} title={event.title} text={richTextToPlainText(event.description) || "Подробная страница мероприятия: сроки, участники, положение и заявка."} />
       <section className="mx-auto grid max-w-6xl gap-5 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="grid gap-5">
           {event.cover ? (
@@ -122,7 +126,7 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
 
           {pageBlocks.filter((block) => block.enabled).map((block) => (
             <InfoSection key={block.id} icon={blockIcon(block.kind)} title={block.title}>
-              {block.text ? <p className="whitespace-pre-line">{block.text}</p> : null}
+              {block.text ? <RichTextContent value={block.text} /> : null}
               {block.kind === "position" ? (
                 <OptionalList items={[
                   draft.classes ? `Участники: ${draft.classes}` : "",
@@ -130,7 +134,8 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
                   draft.owner ? `Ответственный: ${draft.owner}` : ""
                 ]} />
               ) : null}
-              {block.items.length ? (
+              {block.kind === "links" ? <EventLinks items={block.items} /> : null}
+              {block.kind !== "links" && block.items.length ? (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {block.items.map((item) => (
                     <div key={item} className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-600">{item}</div>
@@ -140,12 +145,19 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
             </InfoSection>
           ))}
 
-          {event.acceptApplications ? (
+          {event.acceptApplications && !applicationDeadlinePassed ? (
             <section id="application" className="pt-2">
               <h2 className="mb-4 text-2xl font-semibold text-ink">{event.applicationButtonText}</h2>
               {event.applicationDeadline ? <p className="mb-4 text-sm font-semibold text-coral">Дедлайн: {formatDate(event.applicationDeadline)}</p> : null}
               <ApplicationForm event={event} />
             </section>
+          ) : applicationDeadlinePassed ? (
+            <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <h2 className="text-2xl font-semibold text-amber-950">Приём заявок завершён</h2>
+              <p className="mt-2 text-sm leading-6 text-amber-800">
+                Срок приёма заявок истёк{event.applicationDeadline ? ` ${formatDate(event.applicationDeadline)}` : ""}. Новые заявки больше не принимаются.
+              </p>
+            </div>
           ) : (
             <div className="rounded-[8px] border border-line bg-white p-5 shadow-sm">
               <h2 className="text-2xl font-semibold text-ink">Заявочная форма</h2>
@@ -169,6 +181,11 @@ export default function ManualEventPage({ params }: { params: { slug: string } }
       </section>
     </PageShell>
   );
+}
+
+function isApplicationDeadlinePassed(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return Date.now() > Date.parse(`${value}T23:59:59+04:00`);
 }
 
 function manualDraftToEvent(item: ManualEventPageDraft): EventItem {
@@ -224,6 +241,26 @@ function OptionalList({ items }: { items: string[] }) {
   );
 }
 
+function EventLinks({ items }: { items: string[] }) {
+  const links = items.flatMap((item) => {
+    const separator = item.indexOf("|");
+    const label = (separator < 0 ? item : item.slice(0, separator)).trim();
+    const href = normalizePublicHref(separator < 0 ? item : item.slice(separator + 1));
+    return href ? [{ label: label || href, href }] : [];
+  });
+  if (!links.length) return null;
+  return (
+    <div className="not-prose grid gap-2 sm:grid-cols-2">
+      {links.map((link) => (
+        <a key={`${link.label}-${link.href}`} href={link.href} target="_blank" rel="noopener noreferrer" className="focus-ring flex min-h-12 items-center justify-between gap-3 rounded-[8px] border border-line bg-mist px-4 py-3 font-semibold text-ink transition hover:border-apple hover:text-apple">
+          <span className="flex min-w-0 items-center gap-2"><Link2 size={17} className="shrink-0" /><span className="break-words">{link.label}</span></span>
+          <ExternalLink size={16} className="shrink-0" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function InfoSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <section className="prose prose-slate max-w-none rounded-[8px] border border-line bg-white p-5 shadow-sm prose-headings:text-ink prose-p:leading-7 prose-li:my-1">
@@ -239,6 +276,7 @@ function InfoSection({ icon, title, children }: { icon: ReactNode; title: string
 function blockIcon(kind: PageContentBlock["kind"]) {
   if (kind === "participation") return <CheckCircle2 />;
   if (kind === "materials") return <ImageIcon />;
+  if (kind === "links") return <Link2 />;
   if (kind === "custom") return <FileText />;
   return <ClipboardList />;
 }

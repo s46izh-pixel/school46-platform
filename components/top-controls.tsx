@@ -33,6 +33,7 @@ const usefulLinks = [
 ];
 
 const classGroupButtons = ["1-4 классы", "5-8 классы", "9-11 классы", "Все классы"];
+const noSecondTeacherValue = "";
 
 export function TopControls() {
   const [open, setOpen] = useState(false);
@@ -76,8 +77,11 @@ export function TopControls() {
           const currentClass = normalizeClassName(current.selectedClass);
           const selectedClass = nextOptions.includes(currentClass) ? currentClass : nextOptions[0] ?? current.selectedClass;
           const selectedTeacher = nextTeachers.includes(current.selectedTeacher) ? current.selectedTeacher : nextTeachers[0] ?? current.selectedTeacher;
+          const selectedTeacher2 = current.selectedTeacher2 && nextTeachers.includes(current.selectedTeacher2) && current.selectedTeacher2 !== selectedTeacher
+            ? current.selectedTeacher2
+            : noSecondTeacherValue;
           const selectedClasses = normalizeSelectedClasses(current.selectedClasses, selectedClass, nextOptions);
-          const nextPrefs = { ...current, selectedClass, selectedClasses, groupName: selectedClasses.join(", "), selectedTeacher };
+          const nextPrefs = { ...current, selectedClass, selectedClasses, groupName: selectedClasses.join(", "), selectedTeacher, selectedTeacher2 };
           setDraftPrefs(nextPrefs);
           return nextPrefs;
         });
@@ -286,12 +290,29 @@ export function TopControls() {
                   </label>
                 )}
                 {draftPrefs.role === "teacher" ? (
-                  <label className="grid gap-1 text-xs font-semibold text-slate-500">
-                    Педагог
-                    <select value={draftPrefs.selectedTeacher} onChange={(event) => updateDraft({ selectedTeacher: event.target.value })} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-sm text-ink">
-                      {teacherOptions.map((item) => <option key={item}>{item}</option>)}
-                    </select>
-                  </label>
+                  <div className="grid gap-2">
+                    <label className="grid gap-1 text-xs font-semibold text-slate-500">
+                      Педагог
+                      <select
+                        value={draftPrefs.selectedTeacher}
+                        onChange={(event) => updateDraft({ selectedTeacher: event.target.value, selectedTeacher2: draftPrefs.selectedTeacher2 === event.target.value ? noSecondTeacherValue : draftPrefs.selectedTeacher2 })}
+                        className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-sm text-ink"
+                      >
+                        {teacherOptions.map((item) => <option key={item}>{item}</option>)}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-slate-500">
+                      Второй педагог
+                      <select
+                        value={draftPrefs.selectedTeacher2 ?? noSecondTeacherValue}
+                        onChange={(event) => updateDraft({ selectedTeacher2: event.target.value === draftPrefs.selectedTeacher ? noSecondTeacherValue : event.target.value })}
+                        className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-sm text-ink"
+                      >
+                        <option value={noSecondTeacherValue}>Не выбран</option>
+                        {teacherOptions.filter((item) => item !== draftPrefs.selectedTeacher).map((item) => <option key={item}>{item}</option>)}
+                      </select>
+                    </label>
+                  </div>
                 ) : null}
                 <p className="text-xs leading-5 text-slate-500">Если выбрали не то, это всегда можно поменять здесь.</p>
               </section>
@@ -329,11 +350,15 @@ function normalizePreferences(preferences: UserPreferences, savedClass?: string 
   const selectedClass = normalizeClassName(savedClass ?? preferences.selectedClass) || preferences.selectedClass;
   const selectedClasses = normalizeSelectedClasses(preferences.selectedClasses, selectedClass);
   const safeClass = selectedClasses[0] ?? selectedClass;
+  const selectedTeacher2 = preferences.selectedTeacher2 && preferences.selectedTeacher2 !== preferences.selectedTeacher
+    ? preferences.selectedTeacher2
+    : noSecondTeacherValue;
   return {
     ...preferences,
     theme: "light",
     selectedClass: safeClass,
     selectedClasses,
+    selectedTeacher2,
     groupName: preferences.role === "teacher" ? formatClassSelection(selectedClasses) : safeClass
   };
 }

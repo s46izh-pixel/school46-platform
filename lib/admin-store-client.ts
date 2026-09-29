@@ -1,4 +1,5 @@
 import type { AdminStore } from "./admin-store";
+import { defaultNewsClasses } from "./news-options";
 
 export type { AdminStore };
 
@@ -7,13 +8,28 @@ type AdminStoreClientOptions = {
   requireServer?: boolean;
 };
 
+export type AdminEventPageOperation =
+  | { action: "copy"; slug: string }
+  | { action: "delete"; slug: string }
+  | { action: "toggle"; slug: string }
+  | { action: "upsert"; eventPage: Record<string, unknown>; sourceSlug?: string };
+
+export type AdminEventPageOperationResult = {
+  eventPages: unknown[];
+  eventPage?: Record<string, unknown>;
+};
+
 export const defaultClientAdminStore: AdminStore = {
   eventPages: [],
   calendarTemplateVisibility: {},
   newsVisibility: {},
   newsOverrides: {},
+  newsDeleted: {},
+  newsClasses: [...defaultNewsClasses],
+  newsCategories: [],
   homeSections: {},
-  applications: []
+  applications: [],
+  applicationExports: {}
 };
 
 export async function getAdminStore(options: AdminStoreClientOptions = {}) {
@@ -33,7 +49,7 @@ export async function getAdminStore(options: AdminStoreClientOptions = {}) {
 export async function patchAdminStore(patch: Partial<AdminStore>, options: AdminStoreClientOptions = {}) {
   const current = readLocalAdminStore();
   const optimistic = { ...current, ...patch } as AdminStore;
-  writeLocalAdminStore(optimistic);
+  if (!options.requireServer) writeLocalAdminStore(optimistic);
   try {
     const response = await fetch("/api/admin-store", {
       method: "PATCH",
@@ -46,8 +62,19 @@ export async function patchAdminStore(patch: Partial<AdminStore>, options: Admin
     return saved;
   } catch (error) {
     if (options.requireServer) throw normalizeError(error);
+    writeLocalAdminStore(optimistic);
     return optimistic;
   }
+}
+
+export async function mutateAdminEventPage(operation: AdminEventPageOperation) {
+  const response = await fetch("/api/admin-store/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(operation)
+  });
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  return await response.json() as AdminEventPageOperationResult;
 }
 
 async function readErrorMessage(response: Response) {

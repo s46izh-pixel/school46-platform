@@ -2,7 +2,8 @@
 
 import { actions, classes } from "@/lib/mock-data";
 import { uniqueClasses } from "@/lib/class-utils";
-import type { EventItem, ScheduleLesson } from "@/lib/types";
+import { uploadMediaFile } from "@/lib/media-upload-client";
+import type { ApplicationAttachment, EventItem, ScheduleLesson } from "@/lib/types";
 import { CheckCircle2, Paperclip, Send } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
@@ -35,28 +36,34 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
         setError(checkedFiles.message);
         return;
       }
-      const attachments = await Promise.all(files.map((file) => fileToAttachment(file, allowedFiles)));
+      const applicationId = crypto.randomUUID();
+      const attachments = await Promise.all(files.map((file) => fileToAttachment(file, allowedFiles, {
+        eventId: selectedEvent?.id ?? "",
+        applicationId
+      })));
       const response = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...Object.fromEntries(form.entries()),
           files: attachments,
-          applicationId: crypto.randomUUID(),
+          applicationId,
           eventId: selectedEvent?.id ?? "",
           eventTitle: selectedEvent?.title ?? form.get("contest"),
           eventType: selectedEvent?.type ?? "contest",
+          eventDeadline: selectedEvent?.applicationDeadline ?? "",
           createdAt: new Date().toISOString()
         })
       });
       if (!response.ok) {
-        setError("Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
+        const data = await response.json().catch(() => ({})) as { message?: string };
+        setError(data.message || "Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
         return;
       }
       setSent(true);
       event.currentTarget.reset();
-    } catch {
-      setError("Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
     }
   }
 
@@ -172,20 +179,35 @@ function DynamicField({ field }: { field: DynamicFormField }) {
   );
 }
 
-async function fileToAttachment(file: File, allowedFiles: string[]) {
+async function fileToAttachment(file: File, allowedFiles: string[], context: { eventId: string; applicationId: string }) {
+  let preparedFile = file;
+  let fallback: ApplicationAttachment = safeFileAttachment(file);
   if (file.type.startsWith("image/") && acceptsImage(allowedFiles)) {
     try {
       const image = await imageFileToAttachment(file, allowedFiles);
-      return image;
+      fallback = image;
+      if (!image.dataUrl) throw new Error("Не удалось обработать изображение.");
+      preparedFile = await dataUrlToFile(image.dataUrl, image.name, image.type);
     } catch {
-      return safeFileAttachment(file);
+      throw new Error(`Файл "${file.name}" не удалось прочитать как изображение. Выберите исправный файл.`);
     }
   }
-  return safeFileAttachment(file);
+  const uploaded = await uploadMediaFile(preparedFile, {
+    scope: "applications",
+    eventId: context.eventId,
+    applicationId: context.applicationId
+  });
+  return uploaded ?? fallback;
 }
 
 function safeFileAttachment(file: File) {
   return { name: safeAttachmentName(file.name), size: file.size, type: file.type, dataUrl: undefined as string | undefined };
+}
+
+async function dataUrlToFile(dataUrl: string, name: string, type: string) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], name, { type: type || blob.type || "application/octet-stream" });
 }
 
 function parseAllowedFiles(value: string | undefined) {

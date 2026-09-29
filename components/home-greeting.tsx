@@ -6,16 +6,17 @@ import { Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const dailyWishes = [
-  { wish: "Пусть сегодня получится сделать хотя бы один шаг вперёд.", quote: "«Знание — сила». Ф. Бэкон" },
-  { wish: "Спокойствия, внимания и хороших людей рядом.", quote: "«Всё течёт». Гераклит" },
-  { wish: "Пусть сложное сегодня станет понятным.", quote: "«Мыслю, следовательно существую». Р. Декарт" },
-  { wish: "Хорошего темпа: без суеты, но с результатом.", quote: "«Порядок учит беречь время». И. Гёте" },
-  { wish: "Пусть день принесёт маленькую победу.", quote: "«Дорогу осилит идущий». Сенека" },
-  { wish: "Больше ясности в задачах и радости в переменах.", quote: "«Учиться никогда не поздно». Квинтилиан" },
-  { wish: "Пусть сегодня будет повод собой гордиться.", quote: "«Начало — половина дела». Аристотель" }
+  "Пусть сегодня получится сделать хотя бы один шаг вперёд.",
+  "Спокойствия, внимания и хороших людей рядом.",
+  "Пусть сложное сегодня станет понятным.",
+  "Хорошего темпа: без суеты, но с результатом.",
+  "Пусть день принесёт маленькую победу.",
+  "Больше ясности в задачах и радости в переменах.",
+  "Пусть сегодня будет повод собой гордиться."
 ];
+const fallbackQuote = "«Начало — половина дела». — Аристотель";
 
-export function HomeGreeting() {
+export function HomeGreeting({ quotes = [] }: { quotes?: string[] }) {
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
 
   useEffect(() => {
@@ -33,7 +34,9 @@ export function HomeGreeting() {
   const greeting = name ? `Здравствуйте, ${name}` : "Школа №46 онлайн";
   const selectedClasses = prefs.role === "teacher" && prefs.selectedClasses?.length ? prefs.selectedClasses : [prefs.selectedClass];
   const classText = selectedClasses.length ? `Ваши классы: ${formatClassSelection(selectedClasses)}` : "Цифровая платформа";
-  const dailyWish = dailyWishes[getDayOfYear() % dailyWishes.length];
+  const dayIndex = getDayOfYear();
+  const dailyWish = dailyWishes[dayIndex % dailyWishes.length];
+  const dailyQuote = quotes.length ? quotes[dayIndex % quotes.length] : fallbackQuote;
 
   return (
     <div className="mb-4 grid w-fit max-w-2xl gap-2">
@@ -44,7 +47,7 @@ export function HomeGreeting() {
         <span className="text-slate-600">{classText}</span>
       </p>
       <p className="rounded-[8px] bg-[var(--accent-soft)] px-3 py-2 text-sm leading-6 text-slate-700">
-        {dailyWish.wish} <span className="font-semibold text-ink">{dailyWish.quote}</span>
+        {dailyWish} <span className="font-semibold text-ink">{dailyQuote}</span>
       </p>
     </div>
   );

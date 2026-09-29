@@ -4,7 +4,8 @@ import { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import { getPublicEventSettings } from "@/lib/public-admin-store-client";
-import { CalendarDays, Clock, FileText, ListFilter, MapPin, Users, X } from "lucide-react";
+import { richTextToPlainText } from "@/lib/rich-text";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, ListFilter, MapPin, Users, X } from "lucide-react";
 import Link from "next/link";
 import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
 import { SelectField } from "./selectors";
@@ -26,7 +27,7 @@ const categoryPalette: Record<string, CSSProperties> = {
   родителям: { backgroundColor: "#fdf2f8", borderColor: "#f9a8d4", color: "#be185d" },
   культура: { backgroundColor: "#faf5ff", borderColor: "#d8b4fe", color: "#7e22ce" }
 };
-const motivationalQuotes = [
+const fallbackMotivationalQuotes = [
   "Попробуй начать с маленького шага - часто именно он меняет весь день.",
   "У тебя получится: спокойно, по порядку, без лишней спешки.",
   "Каждое новое дело становится понятнее, когда делаешь первый шаг.",
@@ -39,8 +40,9 @@ const motivationalQuotes = [
   "Пусть сегодня будет одно полезное дело, которым можно гордиться."
 ];
 
-export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[]; monthlyItems?: EventItem[] }) {
+export function CalendarView({ items, monthlyItems = [], availableMonths = [], dailyThoughts = [] }: { items: EventItem[]; monthlyItems?: EventItem[]; availableMonths?: string[]; dailyThoughts?: string[] }) {
   const [mode, setMode] = useState(viewModes[0]);
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
   const [classCategoryFilter, setClassCategoryFilter] = useState("Все");
   const [categoryFilter, setCategoryFilter] = useState("Все");
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
@@ -115,9 +117,19 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
   }, [filtered]);
   const upcomingIds = useMemo(() => new Set(upcoming.map((item) => item.id)), [upcoming]);
   const currentDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", weekday: "long" }).format(new Date());
-  const quoteOfTheDay = useMemo(() => motivationalQuotes[dayOfYear(new Date()) % motivationalQuotes.length], []);
-  const calendarDays = useMemo(() => buildMonthGrid(filtered), [filtered]);
-  const calendarTitle = useMemo(() => formatCalendarTitle(calendarDays), [calendarDays]);
+  const quoteOfTheDay = useMemo(() => {
+    const thoughts = dailyThoughts.length ? dailyThoughts : fallbackMotivationalQuotes;
+    return thoughts[dayOfYear(new Date()) % thoughts.length];
+  }, [dailyThoughts]);
+  const calendarMonths = useMemo(() => availableCalendarMonths(items, availableMonths), [availableMonths, items]);
+  const selectedMonthIndex = calendarMonths.indexOf(selectedMonth);
+  const previousMonth = selectedMonthIndex > 0 ? calendarMonths[selectedMonthIndex - 1] : "";
+  const nextMonth = selectedMonthIndex >= 0 && selectedMonthIndex < calendarMonths.length - 1 ? calendarMonths[selectedMonthIndex + 1] : "";
+  const selectedMonthItems = useMemo(() => filtered.filter((item) => eventTouchesMonth(item, selectedMonth)), [filtered, selectedMonth]);
+  const selectedMonthlyItems = useMemo(() => monthlyItems.filter((item) => eventTouchesMonth(item, selectedMonth)), [monthlyItems, selectedMonth]);
+  const calendarDate = useMemo(() => monthDate(selectedMonth), [selectedMonth]);
+  const calendarDays = useMemo(() => buildMonthGrid(filtered, calendarDate), [calendarDate, filtered]);
+  const calendarTitle = useMemo(() => formatCalendarTitle(calendarDate), [calendarDate]);
 
   return (
     <div className="grid gap-5">
@@ -169,8 +181,8 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
           </div>
           <div className="rounded-[8px] border border-white bg-white p-3 shadow-sm">
             <p className="text-xs font-semibold uppercase text-slate-500">Показано</p>
-            <p className="mt-1 text-3xl font-semibold text-ink">{filtered.length}</p>
-            <p className="text-sm text-slate-500">{eventCountLabel(filtered.length)}</p>
+            <p className="mt-1 text-3xl font-semibold text-ink">{selectedMonthItems.length}</p>
+            <p className="text-sm text-slate-500">{eventCountLabel(selectedMonthItems.length)}</p>
             <div className="mt-3 grid gap-2 text-sm">
               <div className="rounded-[8px] bg-mist px-3 py-2">
                 <span className="block text-xs font-semibold text-slate-500">Класс</span>
@@ -186,9 +198,31 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
       </section>
       <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="text-apple" />
-            <h3 className="text-xl font-semibold">{calendarTitle}</h3>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => previousMonth && setSelectedMonth(previousMonth)}
+              disabled={!previousMonth}
+              className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-[8px] bg-mist text-ink disabled:cursor-not-allowed disabled:opacity-35"
+              aria-label="Предыдущий месяц"
+              title="Предыдущий месяц"
+            >
+              <ChevronLeft size={19} />
+            </button>
+            <div className="flex min-w-[190px] items-center justify-center gap-2 sm:min-w-[220px]">
+              <CalendarDays className="shrink-0 text-apple" />
+              <h3 className="text-lg font-semibold capitalize sm:text-xl">{calendarTitle}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => nextMonth && setSelectedMonth(nextMonth)}
+              disabled={!nextMonth}
+              className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-[8px] bg-mist text-ink disabled:cursor-not-allowed disabled:opacity-35"
+              aria-label="Следующий месяц"
+              title="Следующий месяц"
+            >
+              <ChevronRight size={19} />
+            </button>
           </div>
           <div className="flex rounded-[8px] bg-mist p-1">
             {viewModes.map((item) => (
@@ -198,13 +232,13 @@ export function CalendarView({ items, monthlyItems = [] }: { items: EventItem[];
             ))}
           </div>
         </div>
-        {mode === "Месяц" ? <MonthGrid days={calendarDays} highlightedIds={upcomingIds} onSelectEvent={setSelectedEvent} /> : <EventList items={filtered} highlightedIds={upcomingIds} onSelectEvent={setSelectedEvent} />}
+        {mode === "Месяц" ? <MonthGrid days={calendarDays} highlightedIds={upcomingIds} onSelectEvent={setSelectedEvent} /> : <EventList items={selectedMonthItems} highlightedIds={upcomingIds} onSelectEvent={setSelectedEvent} />}
       </div>
-      {monthlyItems.length ? (
+      {selectedMonthlyItems.length ? (
         <section className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
           <h3 className="mb-3 text-2xl font-semibold text-ink">В течение месяца</h3>
           <div className="grid gap-2 md:grid-cols-2">
-            {monthlyItems.map((item) => (
+            {selectedMonthlyItems.map((item) => (
               <div key={item.id} className="rounded-[8px] bg-mist px-3 py-2 text-sm">
                 <span className="font-semibold text-ink">{item.title}</span>
                 <span className="mt-1 block text-xs text-slate-500">{item.time}</span>
@@ -377,8 +411,7 @@ type CalendarDay = {
   events: EventItem[];
 };
 
-function buildMonthGrid(items: EventItem[]): CalendarDay[] {
-  const base = getCalendarBaseDate(items);
+function buildMonthGrid(items: EventItem[], base: Date): CalendarDay[] {
   const firstDay = new Date(base.getFullYear(), base.getMonth(), 1);
   const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0);
   const startOffset = (firstDay.getDay() + 6) % 7;
@@ -400,17 +433,46 @@ function buildMonthGrid(items: EventItem[]): CalendarDay[] {
   });
 }
 
-function getCalendarBaseDate(items: EventItem[]) {
-  const today = new Date();
-  const upcoming = items.find((item) => item.date >= toDateKey(today));
-  const source = upcoming?.date || items[0]?.date;
-  const parsed = source ? new Date(source) : today;
-  return Number.isNaN(parsed.getTime()) ? today : parsed;
+function formatCalendarTitle(date: Date) {
+  return new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(date);
 }
 
-function formatCalendarTitle(days: CalendarDay[]) {
-  const current = days.find((day) => day.inMonth)?.date ?? new Date();
-  return new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(current);
+function availableCalendarMonths(items: EventItem[], configuredMonths: string[]) {
+  const months = new Set([monthKey(new Date()), ...configuredMonths.filter((item) => /^\d{4}-\d{2}$/.test(item))]);
+  for (const item of items) {
+    const start = validCalendarDate(item.startDate || item.date);
+    const end = validCalendarDate(item.endDate || item.startDate || item.date);
+    if (!start || !end) continue;
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const last = new Date(end.getFullYear(), end.getMonth(), 1);
+    for (let index = 0; cursor <= last && index < 60; index += 1) {
+      months.add(monthKey(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+  return Array.from(months).sort();
+}
+
+function eventTouchesMonth(item: EventItem, selectedMonth: string) {
+  const start = (item.startDate || item.date).slice(0, 7);
+  const end = (item.endDate || item.startDate || item.date).slice(0, 7);
+  return Boolean(start && end && start <= selectedMonth && end >= selectedMonth);
+}
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return new Date();
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1);
+}
+
+function validCalendarDate(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function isEventOnDate(item: EventItem, date: Date) {
@@ -584,7 +646,7 @@ function manualDraftToEvent(item: ManualEventPageDraft, index: number): EventIte
     category,
     classCategory: item.classes || "Все классы",
     place: item.place || "",
-    description: item.description || "",
+    description: richTextToPlainText(item.description || ""),
     participants: item.classes || "Все классы",
     owner: item.owner || "Школа №46",
     status: normalizeManualStatus(item.status),

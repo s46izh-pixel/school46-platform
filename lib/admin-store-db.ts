@@ -21,20 +21,33 @@ export async function readAdminStoreFromDatabase() {
   return result.rows[0]?.data ?? null;
 }
 
-export async function writeAdminStoreToDatabase(store: AdminStore) {
-  if (!hasDatabaseAdminStore()) return store;
+export async function mutateAdminStoreInDatabase(mutate: (store: Partial<AdminStore>) => AdminStore) {
+  if (!hasDatabaseAdminStore()) throw new Error("DATABASE_URL is not configured");
   await ensureAdminStoreTable();
-  await getPool().query(
-    `
-      insert into admin_store (id, data, updated_at)
-      values ($1, $2::jsonb, now())
-      on conflict (id) do update
-      set data = excluded.data,
-          updated_at = now()
-    `,
-    [adminStoreId, JSON.stringify(store)]
-  );
-  return store;
+  const client = await getPool().connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      "insert into admin_store (id, data) values ($1, '{}'::jsonb) on conflict (id) do nothing",
+      [adminStoreId]
+    );
+    const current = await client.query<{ data: Partial<AdminStore> }>(
+      "select data from admin_store where id = $1 for update",
+      [adminStoreId]
+    );
+    const next = mutate(current.rows[0]?.data ?? {});
+    await client.query(
+      "update admin_store set data = $2::jsonb, updated_at = now() where id = $1",
+      [adminStoreId, JSON.stringify(next)]
+    );
+    await client.query("commit");
+    return next;
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function ensureAdminStoreTable() {

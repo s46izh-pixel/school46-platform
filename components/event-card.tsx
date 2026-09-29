@@ -1,5 +1,6 @@
 import { EventItem } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { richTextToPlainText } from "@/lib/rich-text";
 import { MapPin, Send } from "lucide-react";
 import Link from "next/link";
 
@@ -15,7 +16,7 @@ export function EventCard({ item }: { item: EventItem }) {
         </div>
         <span className="rounded-[8px] bg-mist px-2 py-1 text-xs font-semibold text-slate-600">{item.category}</span>
       </div>
-      {item.description ? <p className="text-sm leading-6 text-slate-600">{item.description}</p> : null}
+      {item.description ? <p className="text-sm leading-6 text-slate-600">{richTextToPlainText(item.description)}</p> : null}
       <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
         <MapPin size={16} />
         {item.place} · {item.participants}

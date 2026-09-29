@@ -16,6 +16,7 @@ const roles: Array<{ id: UserPreferences["role"]; title: string; text: string }>
 
 const onboardingVersion = 1;
 const classGroupButtons = ["1-4 классы", "5-8 классы", "9-11 классы", "Все классы"];
+const noSecondTeacherValue = "";
 
 export function WelcomePersonalizer() {
   const [mounted, setMounted] = useState(false);
@@ -42,7 +43,10 @@ export function WelcomePersonalizer() {
           ...current,
           selectedClass: nextClasses.includes(normalizeClassName(current.selectedClass)) ? normalizeClassName(current.selectedClass) : nextClasses[0] ?? current.selectedClass,
           selectedClasses: normalizeSelectedClasses(current.selectedClasses, current.selectedClass, nextClasses),
-          selectedTeacher: nextTeachers.includes(current.selectedTeacher) ? current.selectedTeacher : nextTeachers[0] ?? current.selectedTeacher
+          selectedTeacher: nextTeachers.includes(current.selectedTeacher) ? current.selectedTeacher : nextTeachers[0] ?? current.selectedTeacher,
+          selectedTeacher2: current.selectedTeacher2 && nextTeachers.includes(current.selectedTeacher2) && current.selectedTeacher2 !== current.selectedTeacher
+            ? current.selectedTeacher2
+            : noSecondTeacherValue
         }));
       })
       .catch(() => setClassOptions(uniqueClasses(classes, classes)));
@@ -61,7 +65,8 @@ export function WelcomePersonalizer() {
 
   function finish() {
     const selectedClasses = draft.role === "teacher" ? normalizeSelectedClasses(draft.selectedClasses, draft.selectedClass, classOptions) : [draft.selectedClass];
-    const next = { ...draft, selectedClass: selectedClasses[0] ?? draft.selectedClass, selectedClasses, onboardingDone: true, onboardingVersion, groupName: draft.role === "teacher" ? selectedClasses.join(", ") : draft.selectedClass };
+    const selectedTeacher2 = draft.selectedTeacher2 && draft.selectedTeacher2 !== draft.selectedTeacher ? draft.selectedTeacher2 : noSecondTeacherValue;
+    const next = { ...draft, selectedClass: selectedClasses[0] ?? draft.selectedClass, selectedClasses, selectedTeacher2, onboardingDone: true, onboardingVersion, groupName: draft.role === "teacher" ? selectedClasses.join(", ") : draft.selectedClass };
     localStorage.setItem(preferencesStorageKey, JSON.stringify(next));
     localStorage.setItem("school46.class", next.selectedClass);
     localStorage.setItem("school46.teacher", next.selectedTeacher);
@@ -142,8 +147,23 @@ export function WelcomePersonalizer() {
             <div className="grid gap-3">
               <label className="grid gap-2 text-sm font-semibold text-slate-600">
                 Педагог
-                <select value={draft.selectedTeacher} onChange={(event) => update({ selectedTeacher: event.target.value })} className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3 text-ink">
+                <select
+                  value={draft.selectedTeacher}
+                  onChange={(event) => update({ selectedTeacher: event.target.value, selectedTeacher2: draft.selectedTeacher2 === event.target.value ? noSecondTeacherValue : draft.selectedTeacher2 })}
+                  className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3 text-ink"
+                >
                   {teacherOptions.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-slate-600">
+                Второй педагог
+                <select
+                  value={draft.selectedTeacher2 ?? noSecondTeacherValue}
+                  onChange={(event) => update({ selectedTeacher2: event.target.value === draft.selectedTeacher ? noSecondTeacherValue : event.target.value })}
+                  className="focus-ring rounded-[8px] border border-line bg-white px-3 py-3 text-ink"
+                >
+                  <option value={noSecondTeacherValue}>Не выбран</option>
+                  {teacherOptions.filter((item) => item !== draft.selectedTeacher).map((item) => <option key={item}>{item}</option>)}
                 </select>
               </label>
               <div className="grid gap-2">

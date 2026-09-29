@@ -1,6 +1,28 @@
 export type UserRole = "admin" | "news_editor" | "event_manager" | "class_teacher" | "viewer";
 
 export type NewsStatus = "draft" | "published" | "archived";
+export type NewsGalleryLayout = "grid" | "mosaic" | "filmstrip" | "slider";
+export type NewsGalleryWidth = "narrow" | "content" | "wide";
+export type NewsGalleryAlign = "left" | "center" | "right";
+
+export type NewsGalleryImage = {
+  id: string;
+  src: string;
+  caption: string;
+  fileName?: string;
+};
+
+export type NewsContentBlock = {
+  id: string;
+  kind: "text" | "gallery";
+  text?: string;
+  gallery?: {
+    layout: NewsGalleryLayout;
+    width: NewsGalleryWidth;
+    align: NewsGalleryAlign;
+    images: NewsGalleryImage[];
+  };
+};
 export type EventStatus = "planned" | "active" | "finished";
 export type ApplicationStatus = "new" | "accepted" | "revision" | "rejected" | "sent";
 
@@ -40,6 +62,7 @@ export type NewsItem = {
   pinned?: boolean;
   favorite?: boolean;
   slug: string;
+  contentBlocks?: NewsContentBlock[];
 };
 
 export type EventItem = {
@@ -144,7 +167,9 @@ export type ApplicationItem = {
   eventId: string;
   eventTitle: string;
   eventType: EventItem["type"];
+  eventDeadline?: string;
   createdAt: string;
+  updatedAt?: string;
   contest: string;
   className: string;
   student: string;
@@ -158,11 +183,22 @@ export type ApplicationItem = {
   files?: ApplicationAttachment[];
 };
 
+export type ApplicationExportRecord = {
+  eventTitle: string;
+  exportedAt: string;
+  applicationCount: number;
+  latestApplicationAt: string;
+};
+
 export type ApplicationAttachment = {
   name: string;
   size: number;
   type: string;
   dataUrl?: string;
+  key?: string;
+  url?: string;
+  uploadedAt?: string;
+  deleteAfter?: string;
 };
 
 export type UserPreferences = {
@@ -172,6 +208,7 @@ export type UserPreferences = {
   selectedClass: string;
   selectedClasses?: string[];
   selectedTeacher: string;
+  selectedTeacher2?: string;
   theme: "light" | "dark";
   design: "silver" | "classic" | "sky" | "mint" | "sakura" | "graphite" | "aurora" | "school" | "space";
   userName: string;

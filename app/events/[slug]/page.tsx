@@ -15,6 +15,7 @@ export default async function EventPage({ params }: { params: { slug: string } }
   const requestedSlug = decodeURIComponent(params.slug);
   const item = events.find((entry) => entry.slug === requestedSlug || encodeURIComponent(entry.slug) === params.slug);
   if (!item) notFound();
+  const applicationDeadlinePassed = Boolean(item.applicationDeadline && isApplicationDeadlinePassed(item.applicationDeadline));
 
   return (
     <PageShell>
@@ -51,12 +52,19 @@ export default async function EventPage({ params }: { params: { slug: string } }
             </div>
           </InfoSection>
 
-          {item.acceptApplications ? (
+          {item.acceptApplications && !applicationDeadlinePassed ? (
             <section id="application" className="pt-2">
               <h2 className="mb-4 text-2xl font-semibold text-ink">{item.applicationButtonText}</h2>
               {item.applicationDeadline ? <p className="mb-4 text-sm font-semibold text-coral">Дедлайн: {formatDate(item.applicationDeadline)}</p> : null}
               <ApplicationForm event={item} />
             </section>
+          ) : applicationDeadlinePassed ? (
+            <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <h2 className="text-2xl font-semibold text-amber-950">Приём заявок завершён</h2>
+              <p className="mt-2 text-sm leading-6 text-amber-800">
+                Срок приёма заявок истёк{item.applicationDeadline ? ` ${formatDate(item.applicationDeadline)}` : ""}. Новые заявки больше не принимаются.
+              </p>
+            </div>
           ) : (
             <div className="rounded-[8px] border border-line bg-white p-5 shadow-sm">
               <h2 className="text-2xl font-semibold text-ink">Заявочная форма</h2>
@@ -78,6 +86,11 @@ export default async function EventPage({ params }: { params: { slug: string } }
       </section>
     </PageShell>
   );
+}
+
+function isApplicationDeadlinePassed(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return Date.now() > Date.parse(`${value}T23:59:59+04:00`);
 }
 
 function MetaCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {

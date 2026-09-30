@@ -16,6 +16,7 @@ export function UserPreferencesPanel() {
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
   const [mounted, setMounted] = useState(false);
   const [classOptions, setClassOptions] = useState(() => uniqueClasses(classes, classes));
+  const [teacherOptions, setTeacherOptions] = useState(() => teacherNames.slice().sort((first, second) => first.localeCompare(second, "ru")));
 
   useEffect(() => {
     setMounted(true);
@@ -25,7 +26,10 @@ export function UserPreferencesPanel() {
       .then((response) => response.json())
       .then((data: { lessons?: ScheduleLesson[] }) => {
         const nextOptions = uniqueClasses(data.lessons?.map((lesson) => lesson.className) ?? [], classes);
+        const nextTeachers = Array.from(new Set(data.lessons?.map((lesson) => lesson.teacher.trim()).filter(Boolean)))
+          .sort((first, second) => first.localeCompare(second, "ru"));
         setClassOptions(nextOptions);
+        setTeacherOptions(nextTeachers.length ? nextTeachers : teacherNames.slice().sort((first, second) => first.localeCompare(second, "ru")));
       })
       .catch(() => setClassOptions(uniqueClasses(classes, classes)));
   }, []);
@@ -149,24 +153,26 @@ export function UserPreferencesPanel() {
         ) : (
           <SelectField label="Класс" value={prefs.selectedClass} options={classOptions} onChange={updateClass} />
         )}
-        <SelectField
-          label="Педагог"
-          value={prefs.selectedTeacher}
-          options={teacherNames}
-          onChange={(value) => update({ selectedTeacher: value, selectedTeacher2: prefs.selectedTeacher2 === value ? noSecondTeacherValue : prefs.selectedTeacher2 })}
-        />
         {prefs.role === "teacher" ? (
-          <label className="grid gap-2 text-sm font-medium text-slate-600">
-            Второй педагог
-            <select
-              value={prefs.selectedTeacher2 ?? noSecondTeacherValue}
-              onChange={(event) => update({ selectedTeacher2: event.target.value === prefs.selectedTeacher ? noSecondTeacherValue : event.target.value })}
-              className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-ink"
-            >
-              <option value={noSecondTeacherValue}>Не выбран</option>
-              {teacherNames.filter((item) => item !== prefs.selectedTeacher).map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
+          <>
+            <SelectField
+              label="Педагог"
+              value={prefs.selectedTeacher}
+              options={teacherOptions}
+              onChange={(value) => update({ selectedTeacher: value, selectedTeacher2: prefs.selectedTeacher2 === value ? noSecondTeacherValue : prefs.selectedTeacher2 })}
+            />
+            <label className="grid gap-2 text-sm font-medium text-slate-600">
+              Второй педагог
+              <select
+                value={prefs.selectedTeacher2 ?? noSecondTeacherValue}
+                onChange={(event) => update({ selectedTeacher2: event.target.value === prefs.selectedTeacher ? noSecondTeacherValue : event.target.value })}
+                className="focus-ring rounded-[8px] border border-line bg-white px-3 py-2 text-ink"
+              >
+                <option value={noSecondTeacherValue}>Не выбран</option>
+                {teacherOptions.filter((item) => item !== prefs.selectedTeacher).map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+          </>
         ) : null}
       </div>
       <div className="grid gap-2">

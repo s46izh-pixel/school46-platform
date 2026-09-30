@@ -11,7 +11,7 @@ import { roleStorageKey } from "@/lib/storage";
 import type { ApplicationAttachment, ApplicationExportRecord, ApplicationItem, EventItem, NewsItem, UserRole } from "@/lib/types";
 import { mergeNewsItems } from "@/lib/news-items";
 import { defaultNewsClasses, sameNewsClass, uniqueNewsClasses } from "@/lib/news-options";
-import { BookOpen, CalendarPlus, Check, Clock3, Copy, Download, Eye, EyeOff, FilePenLine, FileSpreadsheet, GraduationCap, Lock, Newspaper, Plus, Search, Settings, ShieldCheck, Tags, Trash2, Users, X } from "lucide-react";
+import { BookOpen, CalendarPlus, Check, Clock3, Copy, Download, ExternalLink, Eye, EyeOff, FilePenLine, FileSpreadsheet, GraduationCap, KeyRound, Lock, Newspaper, Plus, RefreshCw, Search, Settings, ShieldCheck, Tags, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -614,6 +614,10 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   const [exportingGoogle, setExportingGoogle] = useState("");
   const [exportRecords, setExportRecords] = useState<Record<string, ApplicationExportRecord>>({});
   const [cleaningAttachments, setCleaningAttachments] = useState(false);
+  const [googleConnection, setGoogleConnection] = useState<GoogleExportConnection | null>(null);
+  const [checkingGoogle, setCheckingGoogle] = useState(false);
+  const [googleGuideOpen, setGoogleGuideOpen] = useState(false);
+  const [copiedGoogleValue, setCopiedGoogleValue] = useState("");
   const eventGroups = useMemo(() => groupApplicationsByEvent(applications, eventDrafts), [applications, eventDrafts]);
   const selectedApplications = selectedEvent ? applications.filter((item) => item.eventTitle === selectedEvent) : [];
   const selectedGroup = eventGroups.find((group) => group.title === selectedEvent);
@@ -629,7 +633,25 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
     getAdminStore({ requireServer: true })
       .then((store) => setExportRecords(store.applicationExports))
       .catch(() => setExportRecords({}));
+    checkGoogleConnection(false);
   }, []);
+
+  async function checkGoogleConnection(verify = true) {
+    setCheckingGoogle(true);
+    try {
+      setGoogleConnection(await fetchGoogleExportStatus(verify));
+    } catch (error) {
+      setGoogleConnection({
+        configured: false,
+        verified: false,
+        spreadsheetUrl: "",
+        serviceAccountEmail: "",
+        message: error instanceof Error ? error.message : "Не удалось проверить подключение."
+      });
+    } finally {
+      setCheckingGoogle(false);
+    }
+  }
 
   async function refresh() {
     const [nextApplications, store] = await Promise.all([fetchApplications(), getAdminStore({ requireServer: true })]);
@@ -689,6 +711,16 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
     }
   }
 
+  async function copyGoogleValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedGoogleValue(label);
+      window.setTimeout(() => setCopiedGoogleValue((current) => current === label ? "" : current), 1800);
+    } catch {
+      setMessage("Не удалось скопировать. Выделите значение вручную.");
+    }
+  }
+
   function openEvent(title: string) {
     setSelectedEvent(title);
     setTypeFilter("Все");
@@ -701,6 +733,69 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   return (
     <div className="grid gap-4">
       <SectionTitle eyebrow="Администрирование" title="Заявки" />
+      <div className={`rounded-[8px] border px-4 py-3 text-sm ${googleConnection?.verified ? "border-emerald-200 bg-emerald-50 text-emerald-800" : googleConnection?.configured ? "border-sky-200 bg-sky-50 text-sky-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold">
+              {googleConnection?.verified ? "Google Таблица подключена и доступна" : googleConnection?.configured ? "Данные Google сохранены — проверьте доступ" : "Google Таблица ещё не подключена"}
+            </p>
+            <p className="mt-1 leading-6">
+              {googleConnection?.message ?? "Проверяем настройки подключения..."}
+              {!googleConnection?.configured ? " Подключение выполняется в Timeweb: Настройки приложения → переменные окружения. Нужны GOOGLE_SERVICE_ACCOUNT_EMAIL и GOOGLE_PRIVATE_KEY." : null}
+            </p>
+            {googleConnection?.serviceAccountEmail ? <p className="mt-1 break-all text-xs">Сервисный аккаунт: {googleConnection.serviceAccountEmail}. Он должен быть добавлен в таблицу как редактор.</p> : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button type="button" onClick={() => checkGoogleConnection(true)} disabled={checkingGoogle} className="focus-ring flex items-center gap-2 rounded-[8px] bg-white px-3 py-2 font-semibold text-ink shadow-sm disabled:cursor-wait disabled:text-slate-400">
+              <RefreshCw size={16} className={checkingGoogle ? "animate-spin" : ""} />
+              {checkingGoogle ? "Проверяем..." : "Проверить подключение"}
+            </button>
+            {googleConnection?.spreadsheetUrl ? <a href={googleConnection.spreadsheetUrl} target="_blank" rel="noreferrer" className="focus-ring flex items-center gap-2 rounded-[8px] bg-white px-3 py-2 font-semibold text-ink shadow-sm"><FileSpreadsheet size={16} />Открыть таблицу</a> : null}
+            {!googleConnection?.verified ? (
+              <button type="button" onClick={() => setGoogleGuideOpen((current) => !current)} className="focus-ring flex items-center gap-2 rounded-[8px] bg-ink px-3 py-2 font-semibold text-white shadow-sm">
+                <KeyRound size={16} />
+                {googleGuideOpen ? "Скрыть подключение" : "Настроить подключение"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {googleGuideOpen && !googleConnection?.verified ? (
+          <div className="mt-4 border-t border-current/15 pt-4 text-ink">
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-[8px] bg-white p-3 shadow-sm">
+                <p className="font-semibold">1. Новый ключ Google</p>
+                <p className="mt-1 leading-6 text-slate-600">Откройте сервисный аккаунт, создайте ключ типа JSON и скачайте файл.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noreferrer" className="focus-ring flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 font-semibold text-ink"><ExternalLink size={15} />Сервисные аккаунты</a>
+                  <a href="https://console.cloud.google.com/apis/library/sheets.googleapis.com" target="_blank" rel="noreferrer" className="focus-ring flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 font-semibold text-ink"><ExternalLink size={15} />Google Sheets API</a>
+                </div>
+              </div>
+              <div className="rounded-[8px] bg-white p-3 shadow-sm">
+                <p className="font-semibold">2. Переменные Timeweb</p>
+                <p className="mt-1 leading-6 text-slate-600">Вставьте значения из JSON без сокращений и кавычек.</p>
+                <div className="mt-3 grid gap-2">
+                  <GoogleVariableRow jsonField="client_email" variable="GOOGLE_SERVICE_ACCOUNT_EMAIL" copied={copiedGoogleValue} onCopy={copyGoogleValue} />
+                  <GoogleVariableRow jsonField="private_key" variable="GOOGLE_PRIVATE_KEY" copied={copiedGoogleValue} onCopy={copyGoogleValue} />
+                </div>
+                <a href="https://timeweb.cloud/my/apps/250153/settings" target="_blank" rel="noreferrer" className="focus-ring mt-3 flex w-fit items-center gap-2 rounded-[8px] bg-mist px-3 py-2 font-semibold text-ink"><ExternalLink size={15} />Открыть Timeweb</a>
+              </div>
+              <div className="rounded-[8px] bg-white p-3 shadow-sm lg:col-span-2">
+                <p className="font-semibold">3. Доступ к таблице</p>
+                <p className="mt-1 leading-6 text-slate-600">В Google Таблице нажмите «Настройки доступа» и добавьте сервисный аккаунт с ролью «Редактор».</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {googleConnection?.serviceAccountEmail ? (
+                    <button type="button" onClick={() => copyGoogleValue(googleConnection.serviceAccountEmail, "service-email")} className="focus-ring flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 font-semibold text-ink">
+                      {copiedGoogleValue === "service-email" ? <Check size={15} /> : <Copy size={15} />}
+                      {copiedGoogleValue === "service-email" ? "Адрес скопирован" : "Скопировать адрес аккаунта"}
+                    </button>
+                  ) : null}
+                  {googleConnection?.spreadsheetUrl ? <a href={googleConnection.spreadsheetUrl} target="_blank" rel="noreferrer" className="focus-ring flex items-center gap-2 rounded-[8px] bg-mist px-3 py-2 font-semibold text-ink"><FileSpreadsheet size={15} />Открыть таблицу</a> : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
       {message ? (
         <p className="rounded-[8px] bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
           {message}
@@ -739,7 +834,7 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
                 <ApplicationExportStatus group={group} record={exportRecords[group.title]} />
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
                   <button type="button" onClick={() => openEvent(group.title)} className="rounded-[8px] bg-mist px-3 py-2 text-sm font-semibold text-slate-700">Открыть заявки</button>
-                  <button type="button" onClick={() => exportToGoogle(group.title)} disabled={Boolean(exportingGoogle)} className="flex items-center gap-2 rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:bg-slate-400">
+                  <button type="button" onClick={() => exportToGoogle(group.title)} disabled={Boolean(exportingGoogle) || googleConnection?.configured === false} className="flex items-center gap-2 rounded-[8px] bg-ink px-3 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:bg-slate-400">
                     <FileSpreadsheet size={16} />
                     {exportingGoogle === group.title ? "Выгружаем..." : "Выгрузить в Google Таблицу"}
                   </button>
@@ -766,7 +861,7 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
                 <Download size={17} />
                 Скачать Excel
               </button>
-              <button type="button" onClick={() => exportToGoogle(selectedEvent)} disabled={!selectedApplications.length || Boolean(exportingGoogle)} className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:text-slate-400">
+              <button type="button" onClick={() => exportToGoogle(selectedEvent)} disabled={!selectedApplications.length || Boolean(exportingGoogle) || googleConnection?.configured === false} className="flex items-center gap-2 rounded-[8px] bg-white px-4 py-3 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:text-slate-400">
                 <FileSpreadsheet size={17} />
                 {exportingGoogle === selectedEvent ? "Выгружаем..." : "Выгрузить в Google Таблицу"}
               </button>
@@ -1468,6 +1563,27 @@ async function exportApplicationsToGoogle(eventTitle: string) {
   };
 }
 
+type GoogleExportConnection = {
+  configured: boolean;
+  verified: boolean;
+  spreadsheetUrl: string;
+  serviceAccountEmail: string;
+  message: string;
+};
+
+async function fetchGoogleExportStatus(verify: boolean): Promise<GoogleExportConnection> {
+  const response = await fetch(`/api/applications/export-google${verify ? "?verify=1" : ""}`, { cache: "no-store" });
+  const data = await response.json().catch(() => ({})) as Partial<GoogleExportConnection> & { message?: string };
+  if (!response.ok) throw new Error(data.message || "Не удалось проверить подключение к Google Таблице.");
+  return {
+    configured: Boolean(data.configured),
+    verified: Boolean(data.verified),
+    spreadsheetUrl: data.spreadsheetUrl ?? "",
+    serviceAccountEmail: data.serviceAccountEmail ?? "",
+    message: data.message ?? "Статус подключения получен."
+  };
+}
+
 async function cleanupExpiredAttachments() {
   const response = await fetch("/api/applications/attachments/cleanup", { method: "POST" });
   const data = await response.json().catch(() => ({})) as { deleted?: number; message?: string };
@@ -1643,6 +1759,27 @@ function groupApplicationsByEvent(items: ApplicationItem[], eventDrafts: EventPa
       return { ...base, deadline: draft?.deadline || storedDeadline };
     })
     .sort((first, second) => first.title.localeCompare(second.title, "ru"));
+}
+
+function GoogleVariableRow({ jsonField, variable, copied, onCopy }: {
+  jsonField: string;
+  variable: string;
+  copied: string;
+  onCopy: (value: string, label: string) => Promise<void>;
+}) {
+  const isCopied = copied === variable;
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-[8px] border border-line px-3 py-2">
+      <p className="min-w-0 text-xs text-slate-600">
+        <code className="font-semibold text-ink">{jsonField}</code>
+        <span className="mx-2">→</span>
+        <code className="break-all font-semibold text-ink">{variable}</code>
+      </p>
+      <button type="button" onClick={() => onCopy(variable, variable)} title={`Скопировать ${variable}`} className="focus-ring grid size-8 shrink-0 place-items-center rounded-[8px] bg-mist text-ink">
+        {isCopied ? <Check size={15} /> : <Copy size={15} />}
+      </button>
+    </div>
+  );
 }
 
 function ApplicationExportStatus({ group, record, compact = false }: { group: ApplicationEventGroup; record?: ApplicationExportRecord; compact?: boolean }) {

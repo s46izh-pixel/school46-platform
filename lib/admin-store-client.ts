@@ -29,7 +29,8 @@ export const defaultClientAdminStore: AdminStore = {
   newsCategories: [],
   homeSections: {},
   applications: [],
-  applicationExports: {}
+  applicationExports: {},
+  distanceLearningSnapshots: { saturday: [], temporary: [] }
 };
 
 export async function getAdminStore(options: AdminStoreClientOptions = {}) {

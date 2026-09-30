@@ -879,7 +879,7 @@ function normalizeRoomName(value: string) {
 
 function uniqueValues(values: string[], fallback: string[]) {
   const unique = Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-  return unique.length ? unique : fallback;
+  return (unique.length ? unique : fallback).slice().sort((first, second) => first.localeCompare(second, "ru"));
 }
 
 function normalizeSelectedClasses(selectedClasses: string[] | undefined, selectedClass: string, options: string[]) {

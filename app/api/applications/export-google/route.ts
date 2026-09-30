@@ -1,11 +1,19 @@
 import { cookieName, verifyAdminSession } from "@/lib/admin-auth";
 import { mutateAdminStore, readAdminStore } from "@/lib/admin-store";
 import { noStoreHeaders } from "@/lib/cache";
-import { exportApplicationsToGoogleSheets, GoogleExportError } from "@/lib/google-applications-export";
+import { exportApplicationsToGoogleSheets, getGoogleApplicationsExportStatus, GoogleExportError } from "@/lib/google-applications-export";
 import type { ApplicationExportRecord, ApplicationItem } from "@/lib/types";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+
+export async function GET(request: Request) {
+  if (!await verifyAdminSession(cookieFromRequest(request, cookieName))) {
+    return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401, headers: noStoreHeaders });
+  }
+  const verify = new URL(request.url).searchParams.get("verify") === "1";
+  return NextResponse.json(await getGoogleApplicationsExportStatus(verify), { headers: noStoreHeaders });
+}
 
 export async function POST(request: Request) {
   try {

@@ -15,6 +15,61 @@ export type GoogleApplicationsExportResult = {
   applications: number;
 };
 
+export type GoogleApplicationsExportStatus = {
+  configured: boolean;
+  verified: boolean;
+  spreadsheetUrl: string;
+  serviceAccountEmail: string;
+  message: string;
+};
+
+export async function getGoogleApplicationsExportStatus(verify = false): Promise<GoogleApplicationsExportStatus> {
+  const spreadsheetId = (process.env.GOOGLE_APPLICATIONS_SHEET_ID || defaultSpreadsheetId).trim();
+  const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+  let config: ReturnType<typeof googleConfig>;
+  try {
+    config = googleConfig();
+  } catch (error) {
+    return {
+      configured: false,
+      verified: false,
+      spreadsheetUrl,
+      serviceAccountEmail: "",
+      message: error instanceof Error ? error.message : "Данные сервисного аккаунта не настроены."
+    };
+  }
+
+  if (!verify) {
+    return {
+      configured: true,
+      verified: false,
+      spreadsheetUrl,
+      serviceAccountEmail: config.clientEmail,
+      message: "Данные сервисного аккаунта сохранены на сервере."
+    };
+  }
+
+  try {
+    const token = await accessToken(config);
+    await getSheets(config.spreadsheetId, token);
+    return {
+      configured: true,
+      verified: true,
+      spreadsheetUrl,
+      serviceAccountEmail: config.clientEmail,
+      message: "Подключение проверено: таблица доступна для записи."
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      verified: false,
+      spreadsheetUrl,
+      serviceAccountEmail: config.clientEmail,
+      message: error instanceof Error ? error.message : "Не удалось проверить подключение к Google Таблице."
+    };
+  }
+}
+
 export async function exportApplicationsToGoogleSheets(applications: ApplicationItem[], siteUrl: string): Promise<GoogleApplicationsExportResult> {
   if (!applications.length) throw new GoogleExportError("Нет заявок для выгрузки.", 400);
   const config = googleConfig();
@@ -119,7 +174,12 @@ async function accessToken(config: ReturnType<typeof googleConfig>) {
     exp: now + 3600
   }));
   const unsigned = `${header}.${payload}`;
-  const signature = createSign("RSA-SHA256").update(unsigned).sign(config.privateKey);
+  let signature: Buffer;
+  try {
+    signature = createSign("RSA-SHA256").update(unsigned).sign(config.privateKey);
+  } catch {
+    throw new GoogleExportError("Закрытый ключ Google повреждён. Скопируйте поле private_key целиком из нового JSON-файла сервисного аккаунта.", 502);
+  }
   const assertion = `${unsigned}.${base64Url(signature)}`;
   const response = await fetch(tokenEndpoint, {
     method: "POST",
@@ -131,12 +191,28 @@ async function accessToken(config: ReturnType<typeof googleConfig>) {
     cache: "no-store",
     signal: AbortSignal.timeout(10_000)
   });
-  const data = await response.json().catch(() => ({})) as { access_token?: string; expires_in?: number };
+  const data = await response.json().catch(() => ({})) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
   if (!response.ok || !data.access_token) {
-    throw new GoogleExportError("Google не принял данные сервисного аккаунта. Проверьте ключ и доступ к API.", 502);
+    throw new GoogleExportError(googleTokenErrorMessage(data), 502);
   }
   cachedToken = { value: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000 };
   return cachedToken.value;
+}
+
+function googleTokenErrorMessage(data: { error?: string; error_description?: string }) {
+  const details = `${data.error ?? ""} ${data.error_description ?? ""}`.toLowerCase();
+  if (details.includes("invalid_grant") || details.includes("invalid jwt") || details.includes("signature")) {
+    return "Google отклонил подпись ключа. Создайте новый JSON-ключ сервисного аккаунта и заново вставьте из него client_email и private_key в Timeweb.";
+  }
+  if (details.includes("invalid_client") || details.includes("unauthorized_client")) {
+    return "Сервисный аккаунт Google не найден или отключён. Проверьте аккаунт в Google Cloud и создайте для него новый JSON-ключ.";
+  }
+  return "Google не принял данные сервисного аккаунта. Создайте новый JSON-ключ и замените client_email и private_key в Timeweb.";
 }
 
 async function getSheets(spreadsheetId: string, token: string) {

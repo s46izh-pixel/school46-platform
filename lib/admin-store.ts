@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { hasDatabaseAdminStore, mutateAdminStoreInDatabase, readAdminStoreFromDatabase } from "./admin-store-db";
-import type { ApplicationExportRecord, ApplicationItem, NewsItem } from "./types";
+import type { ApplicationExportRecord, ApplicationItem, DistanceLearningDay, NewsItem } from "./types";
 import { defaultNewsClasses, uniqueNewsClasses } from "./news-options";
 
 export type AdminStore = {
@@ -15,6 +15,10 @@ export type AdminStore = {
   homeSections: Record<string, boolean>;
   applications: ApplicationItem[];
   applicationExports: Record<string, ApplicationExportRecord>;
+  distanceLearningSnapshots: {
+    saturday: DistanceLearningDay[];
+    temporary: DistanceLearningDay[];
+  };
   adminPasswordHash?: string;
 };
 
@@ -28,7 +32,8 @@ export const defaultAdminStore: AdminStore = {
   newsCategories: [],
   homeSections: {},
   applications: [],
-  applicationExports: {}
+  applicationExports: {},
+  distanceLearningSnapshots: { saturday: [], temporary: [] }
 };
 
 const storePath = path.join(process.cwd(), "data", "admin-store.json");
@@ -87,8 +92,27 @@ function sanitizeAdminStore(store: AdminStore): AdminStore {
     homeSections: sanitizeBooleanRecord(store.homeSections),
     applications: sanitizeApplications(store.applications),
     applicationExports: sanitizeApplicationExports(store.applicationExports),
+    distanceLearningSnapshots: sanitizeDistanceLearningSnapshots(store.distanceLearningSnapshots),
     adminPasswordHash: typeof store.adminPasswordHash === "string" ? store.adminPasswordHash : undefined
   };
+}
+
+function sanitizeDistanceLearningSnapshots(value: unknown): AdminStore["distanceLearningSnapshots"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { saturday: [], temporary: [] };
+  const snapshots = value as Partial<AdminStore["distanceLearningSnapshots"]>;
+  return {
+    saturday: sanitizeDistanceLearningDays(snapshots.saturday),
+    temporary: sanitizeDistanceLearningDays(snapshots.temporary)
+  };
+}
+
+function sanitizeDistanceLearningDays(value: unknown): DistanceLearningDay[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is DistanceLearningDay => {
+    if (!item || typeof item !== "object") return false;
+    const day = item as Partial<DistanceLearningDay>;
+    return typeof day.date === "string" && typeof day.className === "string" && Array.isArray(day.lessons);
+  });
 }
 
 function sanitizeApplicationExports(value: unknown): Record<string, ApplicationExportRecord> {

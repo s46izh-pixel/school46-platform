@@ -152,6 +152,27 @@ export type ScheduleChange = {
   note: string;
 };
 
+export type DistanceLearningLink = {
+  label: string;
+  url: string;
+};
+
+export type DistanceLearningLesson = {
+  number: number;
+  time: string;
+  subject: string;
+  teacher: string;
+  assignment: string;
+  links: DistanceLearningLink[];
+};
+
+export type DistanceLearningDay = {
+  date: string;
+  className: string;
+  source: string;
+  lessons: DistanceLearningLesson[];
+};
+
 export type BellSchedule = {
   dayGroup?: "monday" | "regular";
   shift?: 1 | 2;

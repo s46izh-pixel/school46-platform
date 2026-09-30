@@ -7,6 +7,7 @@ const nav = [
   { href: "/", label: "Главная" },
   { href: "/news", label: "Новости" },
   { href: "/schedule", label: "Расписание" },
+  { href: "/distance-learning", label: "Дистанционное обучение" },
   { href: "/rating", label: "Рейтинг" },
   { href: "/events", label: "События" }
 ];
@@ -24,12 +25,12 @@ export function Header() {
             <span className="block truncate font-semibold text-ink">Школа №46</span>
           </span>
         </Link>
-        <nav className="hidden min-w-0 items-center gap-1 whitespace-nowrap lg:flex">
+        <nav className="hidden min-w-0 items-center gap-0.5 whitespace-nowrap lg:flex">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="focus-ring rounded-[8px] px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-ink"
+              className="focus-ring rounded-[8px] px-2 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-ink xl:px-3"
             >
               {item.label}
             </Link>

@@ -1,9 +1,11 @@
 "use client";
 
 import { normalizeClassName, sortClasses } from "@/lib/class-utils";
+import { DISTANCE_LEARNING_REVALIDATE_SECONDS } from "@/lib/cache";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import type { DistanceLearningDay, DistanceLearningLesson, UserPreferences } from "@/lib/types";
 import { BookOpenCheck, CalendarDays, ChevronDown, CircleAlert, ExternalLink, History, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type DistanceMode = "saturday" | "temporary";
@@ -22,6 +24,7 @@ export function DistanceLearningView({
   temporaryDays: DistanceLearningDay[];
   today: string;
 }) {
+  const router = useRouter();
   const saturdayClassOptions = useMemo(() => classesFromDays(saturdayDays), [saturdayDays]);
   const temporaryClassOptions = useMemo(() => classesFromDays(temporaryDays), [temporaryDays]);
   const [mode, setMode] = useState<DistanceMode>("saturday");
@@ -33,6 +36,19 @@ export function DistanceLearningView({
   const [initialized, setInitialized] = useState(false);
   const [openDates, setOpenDates] = useState<string[]>([]);
   const [showPast, setShowPast] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    const timer = window.setInterval(refresh, DISTANCE_LEARNING_REVALIDATE_SECONDS * 1000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [router]);
 
   useEffect(() => {
     function syncWithProfile() {
@@ -77,8 +93,8 @@ export function DistanceLearningView({
   }, [className, classOptions, initialized, mode, preferences.role]);
 
   const classDays = useMemo(
-    () => days.filter((day) => day.className === className && (!isTemporary || day.lessons.some(hasAssignment))),
-    [className, days, isTemporary]
+    () => days.filter((day) => day.className === className),
+    [className, days]
   );
   const upcomingDays = useMemo(() => classDays.filter((day) => day.date >= today), [classDays, today]);
   const pastDays = useMemo(() => classDays.filter((day) => day.date < today).reverse(), [classDays, today]);

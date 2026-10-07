@@ -1018,6 +1018,146 @@
       },
       {
         "date": "2026-10-03",
+        "className": "9а",
+        "source": "8-11 классы",
+        "lessons": [
+          {
+            "number": 1,
+            "time": "08:00-08:40",
+            "subject": "Практическая математика",
+            "teacher": "Макарова О. В.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 2,
+            "time": "08:50-09:30",
+            "subject": "Физика",
+            "teacher": "Пономарев А. П.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 3,
+            "time": "09:50-10:30",
+            "subject": "Труд (технология)",
+            "teacher": "Хворенкова Е. А.",
+            "assignment": "",
+            "links": []
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "className": "9в",
+        "source": "8-11 классы",
+        "lessons": [
+          {
+            "number": 1,
+            "time": "08:00-08:40",
+            "subject": "Труд (технология)",
+            "teacher": "Хворенкова Е. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 3,
+            "time": "09:50-10:30",
+            "subject": "Физика",
+            "teacher": "Пономарев А. П.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 4,
+            "time": "10:50-11:30",
+            "subject": "Практическая математика",
+            "teacher": "Макарова О. В.",
+            "assignment": "",
+            "links": []
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "className": "9г",
+        "source": "8-11 классы",
+        "lessons": [
+          {
+            "number": 1,
+            "time": "08:00-08:40",
+            "subject": "Смысловое чтение",
+            "teacher": "Судакова А. О.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 2,
+            "time": "08:50-09:30",
+            "subject": "Английский язык",
+            "teacher": "Муравьева О. Р.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 3,
+            "time": "09:50-10:30",
+            "subject": "Труд (технология)",
+            "teacher": "Хворенкова Е. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 4,
+            "time": "10:50-11:30",
+            "subject": "Практическая математика",
+            "teacher": "Макарова О. В.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 5,
+            "time": "11:50-12:30",
+            "subject": "Физика",
+            "teacher": "Пономарев А. П.",
+            "assignment": "",
+            "links": []
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "className": "9д",
+        "source": "8-11 классы",
+        "lessons": [
+          {
+            "number": 1,
+            "time": "08:00-08:40",
+            "subject": "Физика",
+            "teacher": "Пономарев А. П.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 2,
+            "time": "08:50-09:30",
+            "subject": "Практическая математика",
+            "teacher": "Макарова О. В.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 3,
+            "time": "09:50-10:30",
+            "subject": "Смысловое чтение",
+            "teacher": "Судакова А. О.",
+            "assignment": "",
+            "links": []
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
         "className": "10а",
         "source": "8-11 классы",
         "lessons": [
@@ -14494,146 +14634,22 @@
         ]
       },
       {
-        "date": "2027-03-06",
-        "className": "5а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Физическая культура",
-            "teacher": "Брылякова Т. С.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "5б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "5в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Ахмарова Р. М.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "5г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Физическая культура",
-            "teacher": "Зарницына В. Г.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "6а",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
+            "subject": "Разговоры о важном",
+            "teacher": "Зарницына В. Г.",
             "assignment": "",
             "links": []
           },
           {
             "number": 2,
             "time": "08:50-09:30",
-            "subject": "Литература",
+            "subject": "Русский язык",
             "teacher": "Таныгина И. В.",
             "assignment": "",
             "links": []
@@ -14641,77 +14657,102 @@
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "Русский язык",
-            "teacher": "Таныгина И. В.",
+            "subject": "География",
+            "teacher": "Пивоварова М. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 4,
             "time": "10:50-11:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
+            "subject": "Музыка",
+            "teacher": "Рожкова И. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 5,
+            "time": "17:10-17:50",
+            "subject": "Английский язык",
+            "teacher": "Мыльцева М. И./ Суворова С. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 6,
+            "time": "18:00-18:40",
+            "subject": "Смысловое чтение",
+            "teacher": "Таныгина И. В.",
             "assignment": "",
             "links": []
           }
         ]
       },
       {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "6б",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
+            "subject": "Разговоры о важном",
+            "teacher": "Старикова Е. Ю.",
             "assignment": "",
             "links": []
           },
           {
             "number": 2,
             "time": "08:50-09:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "6в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
+            "subject": "Труд (технология)",
+            "teacher": "Хворенкова Е. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
+            "subject": "Труд (технология)",
+            "teacher": "Хворенкова Е. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 4,
+            "time": "10:50-11:30",
+            "subject": "Русский язык",
+            "teacher": "Старикова Е. Ю.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 5,
+            "time": "17:10-17:50",
+            "subject": "Русский язык",
+            "teacher": "Старикова Е. Ю.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 6,
+            "time": "18:00-18:40",
+            "subject": "География",
+            "teacher": "Пивоварова М. А.",
             "assignment": "",
             "links": []
           }
         ]
       },
       {
-        "date": "2027-03-06",
-        "className": "6г",
+        "date": "2026-10-08",
+        "className": "6в",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Физическая культура",
-            "teacher": "Брылякова Т. С.",
+            "subject": "Разговоры о важном",
+            "teacher": "Чиркова Е. А.",
             "assignment": "",
             "links": []
           },
@@ -14719,14 +14760,69 @@
             "number": 2,
             "time": "08:50-09:30",
             "subject": "Русский язык",
-            "teacher": "Таныгина И. В.",
+            "teacher": "Старикова Е. Ю.",
             "assignment": "",
             "links": []
           },
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "Практическая математика",
+            "subject": "Литература",
+            "teacher": "Старикова Е. Ю.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 4,
+            "time": "10:50-11:30",
+            "subject": "География",
+            "teacher": "Пивоварова М. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 5,
+            "time": "17:10-17:50",
+            "subject": "Музыка",
+            "teacher": "Рожкова И. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 6,
+            "time": "18:00-18:40",
+            "subject": "Русский язык",
+            "teacher": "Старикова Е. Ю.",
+            "assignment": "",
+            "links": []
+          }
+        ]
+      },
+      {
+        "date": "2026-10-08",
+        "className": "6г",
+        "source": "5-8 классы",
+        "lessons": [
+          {
+            "number": 1,
+            "time": "08:00-08:40",
+            "subject": "Разговоры о важном",
+            "teacher": "Мыльцева М. И.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 2,
+            "time": "08:50-09:30",
+            "subject": "География",
+            "teacher": "Пивоварова М. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 3,
+            "time": "09:50-10:30",
+            "subject": "Математика",
             "teacher": "Ахмарова Р. М.",
             "assignment": "",
             "links": []
@@ -14738,19 +14834,35 @@
             "teacher": "Таныгина И. В.",
             "assignment": "",
             "links": []
+          },
+          {
+            "number": 5,
+            "time": "17:10-17:50",
+            "subject": "Литература",
+            "teacher": "Таныгина И. В.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 6,
+            "time": "18:00-18:40",
+            "subject": "Музыка",
+            "teacher": "Рожкова И. А.",
+            "assignment": "",
+            "links": []
           }
         ]
       },
       {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "7а",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
+            "subject": "Русский язык",
+            "teacher": "Балобанова М. А.",
             "assignment": "",
             "links": []
           },
@@ -14765,23 +14877,23 @@
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
+            "subject": "Россия - мои горизонты",
+            "teacher": "Чиркова Е. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 4,
             "time": "10:50-11:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Зарницына В. Г.",
+            "subject": "Русский язык",
+            "teacher": "Балобанова М. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 5,
             "time": "11:50-12:30",
-            "subject": "Алгебра",
+            "subject": "Геометрия",
             "teacher": "Чужанова Л. А.",
             "assignment": "",
             "links": []
@@ -14789,14 +14901,14 @@
         ]
       },
       {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "7б",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Смысловое чтение",
+            "subject": "Русский язык",
             "teacher": "Таныгина И. В.",
             "assignment": "",
             "links": []
@@ -14804,16 +14916,16 @@
           {
             "number": 2,
             "time": "08:50-09:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
+            "subject": "Геометрия",
+            "teacher": "Чужанова Л. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
+            "subject": "Россия - мои горизонты",
+            "teacher": "Парфёнова Г. С.",
             "assignment": "",
             "links": []
           },
@@ -14824,246 +14936,106 @@
             "teacher": "Лихачева А. С.",
             "assignment": "",
             "links": []
-          },
-          {
-            "number": 5,
-            "time": "11:50-12:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Зарницына В. Г.",
-            "assignment": "",
-            "links": []
           }
         ]
       },
       {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "7в",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 2,
             "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
+            "subject": "Смысловое чтение",
+            "teacher": "Судакова А. О.",
             "assignment": "",
             "links": []
           },
           {
             "number": 3,
             "time": "09:50-10:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
+            "subject": "Геометрия",
+            "teacher": "Чужанова Л. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 4,
             "time": "10:50-11:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Брылякова Т. С.",
+            "subject": "История",
+            "teacher": "Лихачева А. С.",
             "assignment": "",
             "links": []
           },
           {
             "number": 5,
             "time": "11:50-12:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
+            "subject": "Россия - мои горизонты",
+            "teacher": "Брылякова Т. С.",
             "assignment": "",
             "links": []
           }
         ]
       },
       {
-        "date": "2027-03-06",
+        "date": "2026-10-08",
         "className": "7г",
         "source": "5-8 классы",
         "lessons": [
           {
             "number": 1,
             "time": "08:00-08:40",
-            "subject": "Модули по видам спорта",
-            "teacher": "Брылякова Т. С.",
+            "subject": "Вероятность и статистика",
+            "teacher": "Тимершаехова А. Р.",
             "assignment": "",
             "links": []
           },
           {
             "number": 2,
             "time": "08:50-09:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
+            "subject": "Музыка",
+            "teacher": "Рожкова И. А.",
             "assignment": "",
             "links": []
           },
           {
             "number": 3,
             "time": "09:50-10:30",
+            "subject": "Геометрия",
+            "teacher": "Чужанова Л. А.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 4,
+            "time": "10:50-11:30",
+            "subject": "Русский язык",
+            "teacher": "Судакова А. О.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 5,
+            "time": "11:50-12:30",
+            "subject": "Практическая физика",
+            "teacher": "Пономарев А. П.",
+            "assignment": "",
+            "links": []
+          },
+          {
+            "number": 6,
+            "time": "12:40-13:20",
             "subject": "История",
             "teacher": "Лихачева А. С.",
             "assignment": "",
             "links": []
           },
           {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "8а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "8б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "8в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-03-06",
-        "className": "8г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
+            "number": 7,
+            "time": "13:30-14:10",
+            "subject": "Россия - мои горизонты",
+            "teacher": "Лихачева А. С.",
             "assignment": "",
             "links": []
           }
@@ -15321,582 +15293,6 @@
             "time": "11:50-12:30",
             "subject": "Английский язык",
             "teacher": "Муравьева О. Р.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "5а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Физическая культура",
-            "teacher": "Брылякова Т. С.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "5б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "5в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Ахмарова Р. М.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "5г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Изобразительное искусство",
-            "teacher": "Дементьева М. П.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Физическая культура",
-            "teacher": "Зарницына В. Г.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Чиркова Е. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "6а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Литература",
-            "teacher": "Таныгина И. В.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Русский язык",
-            "teacher": "Таныгина И. В.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "6б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "6в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Математика",
-            "teacher": "Гильмутдинова Н. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Чудеса химии",
-            "teacher": "Парфёнова Г. С.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "6г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Физическая культура",
-            "teacher": "Брылякова Т. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Русский язык",
-            "teacher": "Таныгина И. В.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Практическая математика",
-            "teacher": "Ахмарова Р. М.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Русский язык",
-            "teacher": "Таныгина И. В.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "7а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Введение в химию",
-            "teacher": "Парфёнова Г. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Зарницына В. Г.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 5,
-            "time": "11:50-12:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "7б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Смысловое чтение",
-            "teacher": "Таныгина И. В.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 5,
-            "time": "11:50-12:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Зарницына В. Г.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "7в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Модули по видам спорта",
-            "teacher": "Брылякова Т. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 5,
-            "time": "11:50-12:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "7г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Модули по видам спорта",
-            "teacher": "Брылякова Т. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Алгебра",
-            "teacher": "Чужанова Л. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Лихачева А. С.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Иностранный язык",
-            "teacher": "Серебренникова К. М./ Михеева Ф. Р.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "8а",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "8б",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "8в",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          }
-        ]
-      },
-      {
-        "date": "2027-05-08",
-        "className": "8г",
-        "source": "5-8 классы",
-        "lessons": [
-          {
-            "number": 1,
-            "time": "08:00-08:40",
-            "subject": "Основы программирования",
-            "teacher": "Протопопова А. Е./Тимершаехова А. Р.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 2,
-            "time": "08:50-09:30",
-            "subject": "Биология",
-            "teacher": "Киселева С. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 3,
-            "time": "09:50-10:30",
-            "subject": "Русский язык",
-            "teacher": "Балобанова М. А.",
-            "assignment": "",
-            "links": []
-          },
-          {
-            "number": 4,
-            "time": "10:50-11:30",
-            "subject": "История",
-            "teacher": "Шаклеина Д. Н.",
             "assignment": "",
             "links": []
           }

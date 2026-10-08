@@ -2,8 +2,8 @@ import { DistanceLearningView } from "@/components/distance-learning-view";
 import { PageHero, PageShell } from "@/components/page-shell";
 import { getDistanceLearningData } from "@/lib/distance-learning";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const dynamic = "force-static";
+export const revalidate = 60;
 export const runtime = "nodejs";
 
 export default async function DistanceLearningPage() {

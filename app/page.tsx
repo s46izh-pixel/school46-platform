@@ -1,6 +1,6 @@
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
-import { HomeSectionGate } from "@/components/home-section-gate";
+import { HomeSectionGate, HomeSectionsProvider } from "@/components/home-section-gate";
 import { HomeNewsGrid } from "@/components/home-news-grid";
 import { MobileNav } from "@/components/mobile-nav";
 import { RatingTable } from "@/components/rating-table";
@@ -10,6 +10,8 @@ import { HomeGreeting } from "@/components/home-greeting";
 import { TodayOverview } from "@/components/today-overview";
 import { UserPreferencesPanel } from "@/components/user-preferences-panel";
 import { DATA_REVALIDATE_SECONDS } from "@/lib/cache";
+import { readAdminStore } from "@/lib/admin-store";
+import { defaultHomeSectionSettings } from "@/lib/home-sections";
 import { news } from "@/lib/mock-data";
 import { getRatingLeaders } from "@/lib/rating";
 import { getDataset, getHomeQuotes, getScheduleChanges } from "@/lib/sheets";
@@ -17,16 +19,18 @@ import type { BellSchedule, EventItem, RatingItem, ScheduleChange, ScheduleLesso
 import { Bell } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
 export const revalidate = DATA_REVALIDATE_SECONDS;
 
 export default async function Home() {
-  const [lessons, bells, rating, changes, events, homeQuotes] = await Promise.all([
+  const [lessons, bells, rating, changes, events, homeQuotes, homeSectionSettings] = await Promise.all([
     getDataset("schedule") as Promise<ScheduleLesson[]>,
     getDataset("bells") as Promise<BellSchedule[]>,
     getDataset("rating") as Promise<RatingItem[]>,
     getScheduleChanges() as Promise<ScheduleChange[]>,
     getDataset("events") as Promise<EventItem[]>,
-    getHomeQuotes()
+    getHomeQuotes(),
+    readInitialHomeSectionSettings()
   ]);
   const publishedNews = news.filter((item) => item.status === "published");
   const leaders = getRatingLeaders(rating);
@@ -45,9 +49,9 @@ export default async function Home() {
               Новости, расписание, события, рейтинг классов и заявки на конкурсы в едином аккуратном интерфейсе.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#schedule" className="focus-ring rounded-[8px] bg-ink px-5 py-3 font-semibold text-white">
+              <Link href="/schedule" className="focus-ring rounded-[8px] bg-ink px-5 py-3 font-semibold text-white">
                 Открыть расписание
-              </a>
+              </Link>
               <Link href="/news" className="focus-ring rounded-[8px] border border-line bg-white px-5 py-3 font-semibold text-ink">
                 Лента новостей
               </Link>
@@ -58,61 +62,72 @@ export default async function Home() {
           </div>
         </section>
 
-        <HomeSectionGate id="news">
-          <section className="bg-white py-12" id="news">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <SectionTitle eyebrow="Лента школы" title="Последние новости" />
-              <HomeNewsGrid items={publishedNews} />
-            </div>
-          </section>
-        </HomeSectionGate>
-
-        <HomeSectionGate id="schedule">
-          <section className="py-12" id="schedule">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <SectionTitle eyebrow="Учебный день" title="Расписание уроков и звонков" />
-              <ScheduleView lessons={lessons} bells={bells} changes={changes} />
-            </div>
-          </section>
-        </HomeSectionGate>
-
-        <HomeSectionGate id="personalization">
-          <section className="bg-white py-12">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <SectionTitle eyebrow="Настройки" title="Персонализация пользователя" />
-              <UserPreferencesPanel />
-            </div>
-          </section>
-        </HomeSectionGate>
-
-        <HomeSectionGate id="rating">
-          <section className="bg-white py-12" id="rating">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <SectionTitle eyebrow="Активность классов" title="Рейтинг и достижения" />
-              <RatingTable items={rating} />
-            </div>
-          </section>
-        </HomeSectionGate>
-
-        <HomeSectionGate id="personalization">
-          <section className="bg-ink py-12 text-white">
-            <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
-              <div>
-                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200"><Bell size={16} /> Персональные настройки</p>
-                <h2 className="text-3xl font-semibold">Сайт запоминает выбранный класс и педагога</h2>
-                <p className="mt-4 max-w-2xl leading-7 text-slate-300">
-                  Персональный выбор класса сохраняется на устройстве, а материалы админки сохраняются в проекте и могут переноситься вместе с сайтом.
-                </p>
+        <HomeSectionsProvider initialSettings={homeSectionSettings}>
+          <HomeSectionGate id="news">
+            <section className="bg-white py-12" id="news">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionTitle eyebrow="Лента школы" title="Последние новости" />
+                <HomeNewsGrid items={publishedNews} />
               </div>
-              <Link href="/api/news" className="self-end rounded-[8px] bg-white px-5 py-3 text-center font-semibold text-ink">
-                Проверить API новостей
-              </Link>
-            </div>
-          </section>
-        </HomeSectionGate>
+            </section>
+          </HomeSectionGate>
+
+          <HomeSectionGate id="schedule">
+            <section className="py-12" id="schedule">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionTitle eyebrow="Учебный день" title="Расписание уроков и звонков" />
+                <ScheduleView lessons={lessons} bells={bells} changes={changes} />
+              </div>
+            </section>
+          </HomeSectionGate>
+
+          <HomeSectionGate id="personalization">
+            <section className="bg-white py-12">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionTitle eyebrow="Настройки" title="Персонализация пользователя" />
+                <UserPreferencesPanel />
+              </div>
+            </section>
+          </HomeSectionGate>
+
+          <HomeSectionGate id="rating">
+            <section className="bg-white py-12" id="rating">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <SectionTitle eyebrow="Активность классов" title="Рейтинг и достижения" />
+                <RatingTable items={rating} />
+              </div>
+            </section>
+          </HomeSectionGate>
+
+          <HomeSectionGate id="personalization">
+            <section className="bg-ink py-12 text-white">
+              <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_360px] lg:px-8">
+                <div>
+                  <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200"><Bell size={16} /> Персональные настройки</p>
+                  <h2 className="text-3xl font-semibold">Сайт запоминает выбранный класс и педагога</h2>
+                  <p className="mt-4 max-w-2xl leading-7 text-slate-300">
+                    Персональный выбор класса сохраняется на устройстве, а материалы админки сохраняются в проекте и могут переноситься вместе с сайтом.
+                  </p>
+                </div>
+                <Link href="/api/news" className="self-end rounded-[8px] bg-white px-5 py-3 text-center font-semibold text-ink">
+                  Проверить API новостей
+                </Link>
+              </div>
+            </section>
+          </HomeSectionGate>
+        </HomeSectionsProvider>
       </main>
       <Footer />
       <MobileNav />
     </>
   );
+}
+
+async function readInitialHomeSectionSettings() {
+  try {
+    const store = await readAdminStore();
+    return { ...defaultHomeSectionSettings(), ...store.homeSections };
+  } catch {
+    return defaultHomeSectionSettings();
+  }
 }

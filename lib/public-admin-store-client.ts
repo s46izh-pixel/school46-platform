@@ -3,7 +3,9 @@ import type { AdminStore } from "./admin-store";
 import type { NewsItem } from "./types";
 
 export async function getPublicHomeSections() {
-  const data = await fetchJson<{ homeSections?: AdminStore["homeSections"] }>("/api/home-sections");
+  const response = await fetch("/api/home-sections", { cache: "no-store" });
+  if (!response.ok) throw new Error("Failed to load home section settings");
+  const data = await response.json() as { homeSections?: AdminStore["homeSections"] };
   return data.homeSections ?? {};
 }
 

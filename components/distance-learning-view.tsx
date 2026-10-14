@@ -4,8 +4,8 @@ import { normalizeClassName, sortClasses } from "@/lib/class-utils";
 import { DISTANCE_LEARNING_REVALIDATE_SECONDS } from "@/lib/cache";
 import { defaultPreferences, preferencesStorageKey } from "@/lib/storage";
 import type { DistanceLearningDay, DistanceLearningLesson, UserPreferences } from "@/lib/types";
-import { BookOpenCheck, CalendarDays, ChevronDown, CircleAlert, ExternalLink, History, UserRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { BookOpenCheck, CalendarDays, ChevronDown, CircleAlert, ExternalLink, History, RefreshCw, UserRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type DistanceMode = "saturday" | "temporary";
 type SyncStatus = "syncing" | "ready" | "offline";
@@ -14,6 +14,7 @@ type DistanceLearningPayload = {
   temporaryDays: DistanceLearningDay[];
   today: string;
   sourcesCurrent?: boolean;
+  updatedAt?: string;
 };
 
 const distanceModeStorageKey = "school46.distanceMode";
@@ -43,45 +44,48 @@ export function DistanceLearningView({
   const [initialized, setInitialized] = useState(false);
   const [openDates, setOpenDates] = useState<string[]>([]);
   const [showPast, setShowPast] = useState(false);
+  const mountedRef = useRef(true);
+  const refreshingRef = useRef(false);
+
+  const refresh = useCallback(async (manual = false) => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    setSyncStatus("syncing");
+    try {
+      const response = await fetch(manual ? "/api/distance-learning?refresh=1" : "/api/distance-learning", {
+        cache: manual ? "no-store" : "default",
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error(`Distance learning API: ${response.status}`);
+      const payload = await response.json() as DistanceLearningPayload;
+      if (!Array.isArray(payload.saturdayDays) || !Array.isArray(payload.temporaryDays) || typeof payload.today !== "string") {
+        throw new Error("Distance learning API returned invalid data");
+      }
+      if (mountedRef.current) {
+        setDistanceData(payload);
+        setSyncStatus(payload.sourcesCurrent === false ? "offline" : "ready");
+      }
+    } catch {
+      if (mountedRef.current) setSyncStatus("offline");
+    } finally {
+      refreshingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    let refreshing = false;
-
-    async function refresh() {
-      if (refreshing) return;
-      refreshing = true;
-      setSyncStatus("syncing");
-      try {
-        const response = await fetch("/api/distance-learning", { headers: { Accept: "application/json" } });
-        if (!response.ok) throw new Error(`Distance learning API: ${response.status}`);
-        const payload = await response.json() as DistanceLearningPayload;
-        if (!Array.isArray(payload.saturdayDays) || !Array.isArray(payload.temporaryDays) || typeof payload.today !== "string") {
-          throw new Error("Distance learning API returned invalid data");
-        }
-        if (active) {
-          setDistanceData(payload);
-          setSyncStatus(payload.sourcesCurrent === false ? "offline" : "ready");
-        }
-      } catch {
-        if (active) setSyncStatus("offline");
-      } finally {
-        refreshing = false;
-      }
-    }
-
+    mountedRef.current = true;
     void refresh();
-    const timer = window.setInterval(refresh, DISTANCE_LEARNING_REVALIDATE_SECONDS * 1000);
+    const timer = window.setInterval(() => void refresh(), DISTANCE_LEARNING_REVALIDATE_SECONDS * 1000);
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      active = false;
+      mountedRef.current = false;
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     function syncWithProfile() {
@@ -101,10 +105,10 @@ export function DistanceLearningView({
       setMode(savedMode);
       setSelectedClasses((current) => ({
         saturday: nextPreferences.role === "teacher"
-          ? pickClass([current.saturday, savedSaturdayClass, profileClass], saturdayClassOptions)
+          ? pickClass([profileClass, savedSaturdayClass, current.saturday], saturdayClassOptions)
           : profileClass,
         temporary: nextPreferences.role === "teacher"
-          ? pickClass([current.temporary, savedTemporaryClass, profileClass], temporaryClassOptions)
+          ? pickClass([profileClass, savedTemporaryClass, current.temporary], temporaryClassOptions)
           : profileClass
       }));
       setInitialized(true);
@@ -132,6 +136,10 @@ export function DistanceLearningView({
   );
   const upcomingDays = useMemo(() => classDays.filter((day) => day.date >= currentToday), [classDays, currentToday]);
   const pastDays = useMemo(() => classDays.filter((day) => day.date < currentToday).reverse(), [classDays, currentToday]);
+  const pastAssignmentCount = useMemo(() => pastDays.reduce(
+    (total, day) => total + day.lessons.filter(hasAssignment).length,
+    0
+  ), [pastDays]);
   const upcomingDatesKey = upcomingDays.map((day) => day.date).join("|");
 
   useEffect(() => {
@@ -221,9 +229,27 @@ export function DistanceLearningView({
             <h2 className="text-lg font-semibold text-ink">Предстоящие занятия</h2>
             <p className="mt-1 text-sm text-slate-500">{upcomingDays.length ? `${upcomingDays.length} ${dateCountLabel(upcomingDays.length)}` : "Нет предстоящих дат"}</p>
           </div>
-          <span className={`rounded-[8px] px-3 py-1.5 text-xs font-semibold ${syncStatus === "offline" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
-            {syncStatus === "syncing" ? "Проверяем обновления..." : syncStatus === "offline" ? "Показана последняя сохранённая версия" : "Данные синхронизированы с таблицами"}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-[8px] px-3 py-1.5 text-xs font-semibold ${syncStatus === "offline" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+              {syncStatus === "syncing"
+                ? "Проверяем обновления..."
+                : syncStatus === "offline"
+                  ? "Показана последняя сохранённая версия"
+                  : distanceData.updatedAt
+                    ? `Обновлено ${formatSyncTime(distanceData.updatedAt)}`
+                    : "Данные синхронизированы с таблицами"}
+            </span>
+            <button
+              type="button"
+              onClick={() => void refresh(true)}
+              disabled={syncStatus === "syncing"}
+              className="focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-[8px] border border-line bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-ink disabled:cursor-wait disabled:text-slate-400"
+              title="Обновить данные из Google Таблиц"
+            >
+              <RefreshCw size={14} className={syncStatus === "syncing" ? "animate-spin" : ""} />
+              Обновить
+            </button>
+          </div>
         </div>
         <div className="divide-y divide-line">
           {upcomingDays.map((day) => (
@@ -248,7 +274,10 @@ export function DistanceLearningView({
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] bg-slate-100 text-slate-500"><History size={18} /></span>
               <span>
                 <span className="block font-semibold text-ink">{isTemporary ? "Архив временного дистанта" : "Прошедшие дистанционные дни"}</span>
-                <span className="block text-sm text-slate-500">{pastDays.length} {dateCountLabel(pastDays.length)}</span>
+                <span className="block text-sm text-slate-500">
+                  {pastDays.length} {dateCountLabel(pastDays.length)}
+                  {pastAssignmentCount ? ` · ${pastAssignmentCount} ${assignmentCountLabel(pastAssignmentCount)}` : ""}
+                </span>
               </span>
             </span>
             <ChevronDown size={20} className={`shrink-0 text-slate-400 transition ${showPast ? "rotate-180" : ""}`} />
@@ -366,6 +395,20 @@ function lessonCountLabel(value: number) {
 
 function dateCountLabel(value: number) {
   return value % 10 === 1 && value % 100 !== 11 ? "дата" : value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20) ? "даты" : "дат";
+}
+
+function assignmentCountLabel(value: number) {
+  return value % 10 === 1 && value % 100 !== 11 ? "задание" : value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 >= 20) ? "задания" : "заданий";
+}
+
+function formatSyncTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "сейчас";
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Samara"
+  }).format(date);
 }
 
 function classesFromDays(days: DistanceLearningDay[]) {

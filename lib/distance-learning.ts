@@ -47,6 +47,15 @@ type DistanceSource = {
   fallbackSheets: string[];
 };
 
+type DistanceReadOptions = {
+  fresh?: boolean;
+};
+
+type DistanceReadResult = {
+  days: DistanceLearningDay[];
+  successfulSources: Set<string>;
+};
+
 type DistanceCell = {
   text: string;
   links: DistanceLearningLink[];
@@ -78,45 +87,52 @@ type GoogleSpreadsheet = {
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
-export async function getDistanceLearningDays(): Promise<DistanceLearningDay[]> {
-  return getDaysFromSources(saturdaySources);
+export function todayInSamara() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Samara",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
 }
 
-export async function getTemporaryDistanceLearningDays(): Promise<DistanceLearningDay[]> {
-  return getDaysFromSources(temporarySources);
+export async function getDistanceLearningDays(options: DistanceReadOptions = {}): Promise<DistanceLearningDay[]> {
+  return (await getDaysFromSources(saturdaySources, options)).days;
 }
 
-export async function getDistanceLearningData(today: string) {
-  const [saturdayLive, temporaryLive, store] = await Promise.all([
-    getDistanceLearningDays(),
-    getTemporaryDistanceLearningDays(),
+export async function getTemporaryDistanceLearningDays(options: DistanceReadOptions = {}): Promise<DistanceLearningDay[]> {
+  return (await getDaysFromSources(temporarySources, options)).days;
+}
+
+export async function getDistanceLearningData(today: string, options: DistanceReadOptions = {}) {
+  const [saturdayResult, temporaryResult, store] = await Promise.all([
+    getDaysFromSources(saturdaySources, options),
+    getDaysFromSources(temporarySources, options),
     readAdminStore()
   ]);
-  const saturday = mergeWithPastSnapshots(store.distanceLearningSnapshots.saturday, saturdayLive, today);
-  const temporary = mergeWithPastSnapshots(store.distanceLearningSnapshots.temporary, temporaryLive, today);
-  const nextSnapshots = {
-    saturday: snapshotDays(store.distanceLearningSnapshots.saturday, saturdayLive, today),
-    temporary: snapshotDays(store.distanceLearningSnapshots.temporary, temporaryLive, today)
-  };
+  const saturday = mergeWithSnapshots(store.distanceLearningSnapshots.saturday, saturdayResult, today);
+  const temporary = mergeWithSnapshots(store.distanceLearningSnapshots.temporary, temporaryResult, today);
+  const nextSnapshots = { saturday, temporary };
 
   if (JSON.stringify(nextSnapshots) !== JSON.stringify(store.distanceLearningSnapshots)) {
     await mutateAdminStore((current) => ({
       distanceLearningSnapshots: {
-        saturday: snapshotDays(current.distanceLearningSnapshots.saturday, saturdayLive, today),
-        temporary: snapshotDays(current.distanceLearningSnapshots.temporary, temporaryLive, today)
+        saturday: mergeWithSnapshots(current.distanceLearningSnapshots.saturday, saturdayResult, today),
+        temporary: mergeWithSnapshots(current.distanceLearningSnapshots.temporary, temporaryResult, today)
       }
     }));
   }
 
-  return { saturdayDays: saturday, temporaryDays: temporary };
+  const sourcesCurrent = saturdayResult.successfulSources.size === saturdaySources.length
+    && temporaryResult.successfulSources.size === temporarySources.length;
+  return { saturdayDays: saturday, temporaryDays: temporary, sourcesCurrent };
 }
 
-function mergeWithPastSnapshots(stored: DistanceLearningDay[], live: DistanceLearningDay[], today: string) {
-  return mergeDays(live, stored.filter((day) => day.date < today));
-}
-
-function snapshotDays(stored: DistanceLearningDay[], live: DistanceLearningDay[], today: string) {
-  return mergeDays(live, stored.filter((day) => day.date < today));
+function mergeWithSnapshots(stored: DistanceLearningDay[], result: DistanceReadResult, today: string) {
+  const preserved = stored.filter((day) => day.date < today || !result.successfulSources.has(day.source));
+  return mergeDays(preserved, result.days);
 }
 
 function mergeDays(first: DistanceLearningDay[], second: DistanceLearningDay[]) {
@@ -127,37 +143,42 @@ function mergeDays(first: DistanceLearningDay[], second: DistanceLearningDay[]) 
   ));
 }
 
-async function getDaysFromSources(sources: DistanceSource[]) {
+async function getDaysFromSources(sources: DistanceSource[], options: DistanceReadOptions): Promise<DistanceReadResult> {
   const results = await Promise.allSettled(sources.map(async (source) => {
-    const sheets = await readWorkbook(source.id, source.fallbackSheets);
+    const sheets = await readWorkbook(source.id, source.fallbackSheets, options);
     return sheets.flatMap((sheet) => mapDistanceSheet(sheet, source.label));
   }));
 
   const unique = new Map<string, DistanceLearningDay>();
-  for (const result of results) {
+  const successfulSources = new Set<string>();
+  for (const [index, result] of results.entries()) {
     if (result.status !== "fulfilled") continue;
+    successfulSources.add(sources[index].label);
     for (const day of result.value) unique.set(`${day.date}|${day.className}`, day);
   }
 
-  return Array.from(unique.values()).sort((first, second) => (
-    first.date.localeCompare(second.date) || compareClassNames(first.className, second.className)
-  ));
+  return {
+    days: Array.from(unique.values()).sort((first, second) => (
+      first.date.localeCompare(second.date) || compareClassNames(first.className, second.className)
+    )),
+    successfulSources
+  };
 }
 
-async function readWorkbook(spreadsheetId: string, fallbackSheets: string[]) {
+async function readWorkbook(spreadsheetId: string, fallbackSheets: string[], options: DistanceReadOptions) {
   try {
     const token = await getAccessToken();
-    if (token) return await readWorkbookFromApi(spreadsheetId, token);
+    if (token) return await readWorkbookFromApi(spreadsheetId, token, options);
   } catch {
     // Public CSV remains available when the service account has not been granted access yet.
   }
-  return readWorkbookFromCsv(spreadsheetId, fallbackSheets);
+  return readWorkbookFromCsv(spreadsheetId, fallbackSheets, options);
 }
 
-async function readWorkbookFromApi(spreadsheetId: string, token: string): Promise<DistanceSheet[]> {
+async function readWorkbookFromApi(spreadsheetId: string, token: string, options: DistanceReadOptions): Promise<DistanceSheet[]> {
   const response = await fetch(`${sheetsApiBase}/${spreadsheetId}?includeGridData=true`, {
     headers: { Authorization: `Bearer ${token}` },
-    next: { revalidate: DISTANCE_LEARNING_REVALIDATE_SECONDS },
+    ...(options.fresh ? { cache: "no-store" as const } : { next: { revalidate: DISTANCE_LEARNING_REVALIDATE_SECONDS } }),
     signal: AbortSignal.timeout(fetchTimeoutMs)
   });
   if (!response.ok) throw new Error(`Google Sheets API: ${response.status}`);
@@ -181,11 +202,11 @@ async function readWorkbookFromApi(spreadsheetId: string, token: string): Promis
   });
 }
 
-async function readWorkbookFromCsv(spreadsheetId: string, sheetNames: string[]): Promise<DistanceSheet[]> {
+async function readWorkbookFromCsv(spreadsheetId: string, sheetNames: string[], options: DistanceReadOptions): Promise<DistanceSheet[]> {
   const results = await Promise.allSettled(sheetNames.map(async (title) => {
     const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(title)}`;
     const response = await fetch(url, {
-      next: { revalidate: DISTANCE_LEARNING_REVALIDATE_SECONDS },
+      ...(options.fresh ? { cache: "no-store" as const } : { next: { revalidate: DISTANCE_LEARNING_REVALIDATE_SECONDS } }),
       signal: AbortSignal.timeout(fetchTimeoutMs)
     });
     if (!response.ok) throw new Error(`Google Sheets CSV: ${response.status}`);

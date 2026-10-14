@@ -1,9 +1,9 @@
 import { DistanceLearningView } from "@/components/distance-learning-view";
 import { PageHero, PageShell } from "@/components/page-shell";
-import { getDistanceLearningData } from "@/lib/distance-learning";
+import { getDistanceLearningData, todayInSamara } from "@/lib/distance-learning";
 
 export const dynamic = "force-static";
-export const revalidate = 60;
+export const revalidate = 1800;
 export const runtime = "nodejs";
 
 export default async function DistanceLearningPage() {
@@ -21,15 +21,4 @@ export default async function DistanceLearningPage() {
       </section>
     </PageShell>
   );
-}
-
-function todayInSamara() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Samara",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date());
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
 }

@@ -2,7 +2,7 @@ export const DATA_REVALIDATE_SECONDS = 900;
 export const EVENTS_REVALIDATE_SECONDS = 60;
 export const QUOTES_REVALIDATE_SECONDS = 300;
 export const SCHEDULE_REVALIDATE_SECONDS = 300;
-export const DISTANCE_LEARNING_REVALIDATE_SECONDS = 60;
+export const DISTANCE_LEARNING_REVALIDATE_SECONDS = 1800;
 export const ADMIN_REVALIDATE_SECONDS = 60;
 
 export const apiCacheHeaders = {
@@ -15,6 +15,10 @@ export const shortApiCacheHeaders = {
 
 export const scheduleApiCacheHeaders = {
   "Cache-Control": `public, s-maxage=${SCHEDULE_REVALIDATE_SECONDS}, stale-while-revalidate=600`
+};
+
+export const distanceLearningApiCacheHeaders = {
+  "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=60"
 };
 
 export const noStoreHeaders = {

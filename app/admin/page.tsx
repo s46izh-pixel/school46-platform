@@ -36,10 +36,14 @@ export default function AdminPage() {
   const [unlocked, setUnlocked] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [remoteEvents, setRemoteEvents] = useState<EventItem[]>(events);
+  const [remoteEvents, setRemoteEvents] = useState<EventItem[]>([]);
   const [eventPageDrafts, setEventPageDrafts] = useState<EventPageDraft[]>([]);
   const [eventDraftsError, setEventDraftsError] = useState("");
   const [adminApplications, setAdminApplications] = useState<ApplicationItem[]>([]);
+  const [adminStore, setAdminStore] = useState<AdminStore | null>(null);
+  const [adminDataState, setAdminDataState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [adminDataError, setAdminDataError] = useState("");
+  const [adminReloadToken, setAdminReloadToken] = useState(0);
 
   const allowedTabs = useMemo(() => getAllowedAdminSections(role), [role]);
 
@@ -70,27 +74,34 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!unlocked) return;
-    fetch("/api/events", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((data: EventItem[]) => setRemoteEvents(data.length ? data : events))
-      .catch(() => setRemoteEvents(events));
-  }, [unlocked]);
-
-  useEffect(() => {
-    if (!unlocked) return;
-    fetchApplications().then(setAdminApplications).catch(() => setAdminApplications([]));
-  }, [unlocked]);
-
-  useEffect(() => {
-    if (!unlocked) return;
+    let cancelled = false;
+    setAdminDataState("loading");
+    setAdminDataError("");
     setEventDraftsError("");
-    migrateLocalAdminStore()
-      .then(() => getAdminStore({ requireServer: true }))
-      .then((store) => setEventPageDrafts(store.eventPages as EventPageDraft[]))
+    Promise.all([
+      fetchAdminEvents(),
+      fetchApplications(),
+      migrateLocalAdminStore()
+    ])
+      .then(([nextEvents, nextApplications, store]) => {
+        if (cancelled) return;
+        setRemoteEvents(nextEvents);
+        setAdminApplications(nextApplications);
+        setAdminStore(store);
+        setEventPageDrafts(store.eventPages as EventPageDraft[]);
+        setAdminDataState("ready");
+      })
       .catch((error) => {
-        setEventDraftsError(error instanceof Error ? error.message : "Не удалось загрузить мероприятия.");
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Не удалось загрузить данные админки.";
+        setAdminDataError(message);
+        setEventDraftsError(message);
+        setAdminDataState("error");
       });
-  }, [active, unlocked]);
+    return () => {
+      cancelled = true;
+    };
+  }, [adminReloadToken, unlocked]);
 
   function openAdminTab(tab: string) {
     if (tab === active) return;
@@ -173,13 +184,23 @@ export default function AdminPage() {
         </div>
 
         <Card className="bg-white">
-          {active === "Dashboard" ? <Dashboard events={remoteEvents} applications={adminApplications} /> : null}
-          {active === "Новости" ? <NewsEditor role={role} /> : null}
-          {active === "Мероприятия" ? <EventsEditor title="Мероприятия" drafts={eventPageDrafts} error={eventDraftsError} /> : null}
-          {active === "Заявки" ? <ApplicationsTable applications={adminApplications} setApplications={setAdminApplications} eventDrafts={eventPageDrafts} /> : null}
-          {active === "Расписание" ? <SchedulePreview /> : null}
-          {active === "Настройки" ? <SettingsPanel /> : null}
-          {active === "Пользователи и роли" ? <RolesPanel /> : null}
+          {adminDataState !== "ready" ? (
+            <AdminDataStatus
+              state={adminDataState}
+              error={adminDataError}
+              onRetry={() => setAdminReloadToken((current) => current + 1)}
+            />
+          ) : (
+            <>
+              {active === "Dashboard" ? <Dashboard events={remoteEvents} applications={adminApplications} store={adminStore!} /> : null}
+              {active === "Новости" ? <NewsEditor role={role} initialStore={adminStore!} onStoreChange={setAdminStore} /> : null}
+              {active === "Мероприятия" ? <EventsEditor title="Мероприятия" drafts={eventPageDrafts} error={eventDraftsError} onDraftsChange={setEventPageDrafts} /> : null}
+              {active === "Заявки" ? <ApplicationsTable applications={adminApplications} setApplications={setAdminApplications} eventDrafts={eventPageDrafts} initialExportRecords={adminStore!.applicationExports} /> : null}
+              {active === "Расписание" ? <SchedulePreview /> : null}
+              {active === "Настройки" ? <SettingsPanel initialStore={adminStore!} onStoreChange={setAdminStore} /> : null}
+              {active === "Пользователи и роли" ? <RolesPanel /> : null}
+            </>
+          )}
         </Card>
       </div>
     </main>
@@ -221,12 +242,47 @@ function RoleSwitcher({ role, setRole }: { role: UserRole; setRole: (role: UserR
   );
 }
 
-function Dashboard({ events: adminEvents, applications: adminApplications }: { events: EventItem[]; applications: ApplicationItem[] }) {
+function AdminDataStatus({ state, error, onRetry }: { state: "idle" | "loading" | "ready" | "error"; error: string; onRetry: () => void }) {
+  if (state === "error") {
+    return (
+      <div className="grid min-h-72 place-items-center rounded-[8px] border border-rose-200 bg-rose-50 p-6 text-center">
+        <div>
+          <p className="font-semibold text-rose-800">Не удалось загрузить актуальные данные</p>
+          <p className="mt-2 text-sm text-rose-700">{error}</p>
+          <button type="button" onClick={onRetry} className="mt-4 inline-flex items-center gap-2 rounded-[8px] bg-ink px-4 py-2 text-sm font-semibold text-white">
+            <RefreshCw size={16} /> Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-72" aria-live="polite" aria-busy="true">
+      <div className="mb-6 flex items-center gap-3">
+        <RefreshCw className="animate-spin text-apple" size={20} />
+        <div>
+          <p className="font-semibold text-ink">Загружаем актуальные данные</p>
+          <p className="text-sm text-slate-500">Покажем раздел сразу после ответа сервера.</p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="h-28 animate-pulse rounded-[8px] bg-mist" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ events: adminEvents, applications: adminApplications, store }: { events: EventItem[]; applications: ApplicationItem[]; store: AdminStore }) {
+  const currentNews = mergeNewsItems(news, store.newsOverrides as Record<string, NewsItem>)
+    .filter((item) => store.newsDeleted[item.slug] !== true);
   return (
     <div className="grid gap-6">
       <SectionTitle eyebrow="Dashboard" title="Обзор платформы" />
       <div className="grid gap-4 md:grid-cols-3">
-        <Metric icon={<Newspaper />} label="Новости" value={news.length} />
+        <Metric icon={<Newspaper />} label="Новости" value={currentNews.length} />
         <Metric icon={<CalendarPlus />} label="Мероприятия" value={adminEvents.length} />
         <Metric icon={<FilePenLine />} label="Заявки" value={adminApplications.length} />
       </div>
@@ -248,12 +304,12 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
   );
 }
 
-function NewsEditor({ role }: { role: UserRole }) {
-  const [visibility, setVisibility] = useState<NewsVisibility>({});
-  const [overrides, setOverrides] = useState<Record<string, NewsItem>>({});
-  const [deleted, setDeleted] = useState<Record<string, boolean>>({});
-  const [newsClasses, setNewsClasses] = useState(defaultNewsClasses);
-  const [newsCategories, setNewsCategories] = useState(categories.map((category) => category.title));
+function NewsEditor({ role, initialStore, onStoreChange }: { role: UserRole; initialStore: AdminStore; onStoreChange: (store: AdminStore) => void }) {
+  const [visibility, setVisibility] = useState<NewsVisibility>(initialStore.newsVisibility);
+  const [overrides, setOverrides] = useState<Record<string, NewsItem>>(initialStore.newsOverrides as Record<string, NewsItem>);
+  const [deleted, setDeleted] = useState<Record<string, boolean>>(initialStore.newsDeleted);
+  const [newsClasses, setNewsClasses] = useState(initialStore.newsClasses.length ? initialStore.newsClasses : defaultNewsClasses);
+  const [newsCategories, setNewsCategories] = useState(initialStore.newsCategories.length ? initialStore.newsCategories : categories.map((category) => category.title));
   const [query, setQuery] = useState("");
   const [classFilter, setClassFilter] = useState("Все");
   const [categoryFilter, setCategoryFilter] = useState("Все");
@@ -275,24 +331,10 @@ function NewsEditor({ role }: { role: UserRole }) {
   const classFilterOptions = useMemo(() => ["Все", ...uniqueNewsClasses([...newsClasses, ...allNews.map((item) => item.className).filter((value) => value !== "Все")])], [allNews, newsClasses]);
   const categoryFilterOptions = useMemo(() => ["Все", ...uniqueFilterValues([...newsCategories, ...allNews.map((item) => item.category)])], [allNews, newsCategories]);
 
-  useEffect(() => {
-    getAdminStore().then((store) => {
-      setVisibility(store.newsVisibility);
-      setOverrides(store.newsOverrides as Record<string, NewsItem>);
-      setDeleted(store.newsDeleted);
-      setNewsClasses(store.newsClasses.length ? store.newsClasses : defaultNewsClasses);
-      setNewsCategories(store.newsCategories.length ? store.newsCategories : categories.map((category) => category.title));
-    }).catch(() => {
-      setVisibility({});
-      setOverrides({});
-      setDeleted({});
-    });
-  }, []);
-
   function toggleNews(slug: string) {
     setVisibility((current) => {
       const next = { ...current, [slug]: current[slug] === false };
-      patchAdminStore({ newsVisibility: next }).catch(() => null);
+      patchAdminStore({ newsVisibility: next }, { requireServer: true }).then(onStoreChange).catch(() => null);
       window.dispatchEvent(new CustomEvent("school46.news-visibility-updated"));
       return next;
     });
@@ -307,7 +349,8 @@ function NewsEditor({ role }: { role: UserRole }) {
       title: `Копия: ${item.title}`,
       status: "draft" as const
     };
-    await patchAdminStore({ newsOverrides: { ...store.newsOverrides, [nextItem.slug]: nextItem } }, { requireServer: true });
+    const saved = await patchAdminStore({ newsOverrides: { ...store.newsOverrides, [nextItem.slug]: nextItem } }, { requireServer: true });
+    onStoreChange(saved);
     setOverrides((current) => ({ ...current, [nextItem.slug]: nextItem }));
     setMessage("Копия новости сохранена как черновик.");
   }
@@ -328,6 +371,7 @@ function NewsEditor({ role }: { role: UserRole }) {
       setOverrides(saved.newsOverrides);
       setVisibility(saved.newsVisibility);
       setDeleted(saved.newsDeleted);
+      onStoreChange(saved);
       setMessage("Новость удалена.");
       window.dispatchEvent(new CustomEvent("school46.news-updated"));
       window.dispatchEvent(new CustomEvent("school46.news-visibility-updated"));
@@ -384,6 +428,7 @@ function NewsEditor({ role }: { role: UserRole }) {
       setNewsClasses(saved.newsClasses.length ? saved.newsClasses : defaultNewsClasses);
       setNewsCategories(saved.newsCategories.length ? saved.newsCategories : categories.map((category) => category.title));
       setOverrides(saved.newsOverrides);
+      onStoreChange(saved);
       setMessage("Справочник новостей обновлён.");
       window.dispatchEvent(new CustomEvent("school46.news-updated"));
     } catch (error) {
@@ -543,7 +588,7 @@ function uniqueFilterValues(values: string[]) {
   return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }
 
-function EventsEditor({ title, drafts, error }: { title: string; drafts: EventPageDraft[]; error: string }) {
+function EventsEditor({ title, drafts, error, onDraftsChange }: { title: string; drafts: EventPageDraft[]; error: string; onDraftsChange: (drafts: EventPageDraft[]) => void }) {
   const visibleDrafts = drafts;
   const [manualDrafts, setManualDrafts] = useState(visibleDrafts);
   const [manualMonthFilter, setManualMonthFilter] = useState("Все месяцы");
@@ -567,7 +612,9 @@ function EventsEditor({ title, drafts, error }: { title: string; drafts: EventPa
   async function toggleManualPage(slug: string) {
     try {
       const saved = await mutateAdminEventPage({ action: "toggle", slug });
-      setManualDrafts(saved.eventPages as EventPageDraft[]);
+      const nextDrafts = saved.eventPages as EventPageDraft[];
+      setManualDrafts(nextDrafts);
+      onDraftsChange(nextDrafts);
     } catch (saveError) {
       window.alert(saveError instanceof Error ? saveError.message : "Не удалось изменить видимость мероприятия.");
     }
@@ -578,7 +625,9 @@ function EventsEditor({ title, drafts, error }: { title: string; drafts: EventPa
     if (!confirmed) return;
     try {
       const saved = await mutateAdminEventPage({ action: "delete", slug });
-      setManualDrafts(saved.eventPages as EventPageDraft[]);
+      const nextDrafts = saved.eventPages as EventPageDraft[];
+      setManualDrafts(nextDrafts);
+      onDraftsChange(nextDrafts);
     } catch (saveError) {
       window.alert(saveError instanceof Error ? saveError.message : "Не удалось удалить мероприятие.");
     }
@@ -588,7 +637,9 @@ function EventsEditor({ title, drafts, error }: { title: string; drafts: EventPa
     setCopyMessage(null);
     try {
       const saved = await mutateAdminEventPage({ action: "copy", slug });
-      setManualDrafts(saved.eventPages as EventPageDraft[]);
+      const nextDrafts = saved.eventPages as EventPageDraft[];
+      setManualDrafts(nextDrafts);
+      onDraftsChange(nextDrafts);
       const copyTitle = typeof saved.eventPage?.title === "string" ? saved.eventPage.title : "мероприятия";
       setCopyMessage({ text: `Копия «${copyTitle}» создана и скрыта с сайта.`, error: false });
     } catch (copyError) {
@@ -659,7 +710,7 @@ function EventsEditor({ title, drafts, error }: { title: string; drafts: EventPa
   );
 }
 
-function ApplicationsTable({ applications, setApplications, eventDrafts }: { applications: ApplicationItem[]; setApplications: (items: ApplicationItem[]) => void; eventDrafts: EventPageDraft[] }) {
+function ApplicationsTable({ applications, setApplications, eventDrafts, initialExportRecords }: { applications: ApplicationItem[]; setApplications: (items: ApplicationItem[]) => void; eventDrafts: EventPageDraft[]; initialExportRecords: Record<string, ApplicationExportRecord> }) {
   const [selectedEvent, setSelectedEvent] = useState("");
   const [typeFilter, setTypeFilter] = useState("Все");
   const [classFilter, setClassFilter] = useState("Все");
@@ -670,7 +721,7 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   const [message, setMessage] = useState("");
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
   const [exportingGoogle, setExportingGoogle] = useState("");
-  const [exportRecords, setExportRecords] = useState<Record<string, ApplicationExportRecord>>({});
+  const [exportRecords, setExportRecords] = useState<Record<string, ApplicationExportRecord>>(initialExportRecords);
   const [cleaningAttachments, setCleaningAttachments] = useState(false);
   const [googleConnection, setGoogleConnection] = useState<GoogleExportConnection | null>(null);
   const [checkingGoogle, setCheckingGoogle] = useState(false);
@@ -698,9 +749,6 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   }, []);
 
   useEffect(() => {
-    getAdminStore({ requireServer: true })
-      .then((store) => setExportRecords(store.applicationExports))
-      .catch(() => setExportRecords({}));
     checkGoogleConnection(false);
   }, []);
 
@@ -1271,28 +1319,14 @@ function SchedulePreview() {
   return <AdminList title="Расписание" items={["Расписание уроков читается из листа Google Sheets", "Расписание педагогов доступно отдельным листом", "Расписание звонков выводится публично"]} />;
 }
 
-function SettingsPanel() {
+function SettingsPanel({ initialStore, onStoreChange }: { initialStore: AdminStore; onStoreChange: (store: AdminStore) => void }) {
   const googleStatus = hasConfiguredSheets()
     ? "Google Таблицы подключены"
     : "Google Таблицы не подключены — используется демо-режим";
-  const [homeSettings, setHomeSettings] = useState(defaultHomeSectionSettings);
-  const [savedHomeSettings, setSavedHomeSettings] = useState(defaultHomeSectionSettings);
+  const initialHomeSettings = { ...defaultHomeSectionSettings(), ...initialStore.homeSections } as Record<HomeSectionId, boolean>;
+  const [homeSettings, setHomeSettings] = useState(initialHomeSettings);
+  const [savedHomeSettings, setSavedHomeSettings] = useState(initialHomeSettings);
   const [homeSettingsMessage, setHomeSettingsMessage] = useState("");
-
-  useEffect(() => {
-    getAdminStore({ requireServer: true })
-      .then((store) => {
-        const next = { ...defaultHomeSectionSettings(), ...store.homeSections } as Record<HomeSectionId, boolean>;
-        setHomeSettings(next);
-        setSavedHomeSettings(next);
-      })
-      .catch(() => {
-        const defaults = defaultHomeSectionSettings();
-        setHomeSettings(defaults);
-        setSavedHomeSettings(defaults);
-        setHomeSettingsMessage("Не удалось загрузить настройки с сервера.");
-      });
-  }, []);
 
   function toggleHomeSection(id: HomeSectionId) {
     setHomeSettingsMessage("");
@@ -1309,6 +1343,7 @@ function SettingsPanel() {
       const next = { ...defaultHomeSectionSettings(), ...saved.homeSections } as Record<HomeSectionId, boolean>;
       setHomeSettings(next);
       setSavedHomeSettings(next);
+      onStoreChange(saved);
       setHomeSettingsMessage("Настройки блоков сохранены на сервере.");
       window.dispatchEvent(new CustomEvent("school46.home-sections-updated"));
     } catch (error) {
@@ -1607,9 +1642,15 @@ function AdminList({ title, items, icon, actions = [] }: { title: string; items:
 
 async function fetchApplications() {
   const response = await fetch("/api/applications", { cache: "no-store" });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error("Не удалось загрузить актуальные заявки.");
   const data = await response.json() as ApplicationItem[];
   return data;
+}
+
+async function fetchAdminEvents() {
+  const response = await fetch("/api/events", { cache: "no-store" });
+  if (!response.ok) throw new Error("Не удалось загрузить актуальные мероприятия.");
+  return await response.json() as EventItem[];
 }
 
 async function updateApplication(application: ApplicationItem) {
@@ -1978,7 +2019,8 @@ async function migrateLocalAdminStore() {
     patch.homeSections = localHomeSections;
   }
 
-  if (Object.keys(patch).length) await patchAdminStore(patch, { requireServer: true });
+  if (Object.keys(patch).length) return await patchAdminStore(patch, { requireServer: true });
+  return store;
 }
 
 function readLocalJson<T>(key: string, fallback: T): T {

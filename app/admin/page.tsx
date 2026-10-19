@@ -16,6 +16,20 @@ import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+const adminTabParamByTitle: Record<string, string> = {
+  Dashboard: "dashboard",
+  "Новости": "news",
+  "Мероприятия": "events",
+  "Заявки": "applications",
+  "Расписание": "schedule",
+  "Настройки": "settings",
+  "Пользователи и роли": "roles"
+};
+
+const adminTabTitleByParam = Object.fromEntries(
+  Object.entries(adminTabParamByTitle).map(([title, param]) => [param, title])
+) as Record<string, string>;
+
 export default function AdminPage() {
   const [role, setRole] = useState<UserRole>("admin");
   const [active, setActive] = useState("Dashboard");
@@ -31,14 +45,21 @@ export default function AdminPage() {
 
   useEffect(() => {
     const savedRole = (localStorage.getItem(roleStorageKey) as UserRole | null) ?? "admin";
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab === "events") setActive("Мероприятия");
-    if (tab === "news") setActive("Новости");
+    const initialTab = adminTabFromLocation();
+    if (initialTab) setActive(initialTab);
     setRole(savedRole);
+
+    function handlePopState() {
+      setActive(adminTabFromLocation() ?? "Dashboard");
+    }
+
+    window.addEventListener("popstate", handlePopState);
     fetch("/api/admin-auth", { cache: "no-store" })
       .then((response) => response.json())
       .then((data: { authenticated?: boolean }) => setUnlocked(Boolean(data.authenticated)))
       .catch(() => setUnlocked(false));
+
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -70,6 +91,16 @@ export default function AdminPage() {
         setEventDraftsError(error instanceof Error ? error.message : "Не удалось загрузить мероприятия.");
       });
   }, [active, unlocked]);
+
+  function openAdminTab(tab: string) {
+    if (tab === active) return;
+    window.history.pushState(
+      { ...(window.history.state ?? {}), adminTab: tab },
+      "",
+      adminTabUrl(tab)
+    );
+    setActive(tab);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -135,7 +166,7 @@ export default function AdminPage() {
 
         <div className="mb-6 flex gap-2 overflow-x-auto rounded-[8px] bg-white p-2">
           {allowedTabs.map((tab) => (
-            <button key={tab} onClick={() => setActive(tab)} className={`rounded-[8px] px-4 py-2 text-sm font-semibold transition ${active === tab ? "bg-ink text-white" : "text-slate-600 hover:bg-mist"}`}>
+            <button key={tab} onClick={() => openAdminTab(tab)} className={`rounded-[8px] px-4 py-2 text-sm font-semibold transition ${active === tab ? "bg-ink text-white" : "text-slate-600 hover:bg-mist"}`}>
               {tab}
             </button>
           ))}
@@ -153,6 +184,33 @@ export default function AdminPage() {
       </div>
     </main>
   );
+}
+
+function adminTabFromLocation() {
+  const param = new URLSearchParams(window.location.search).get("tab") ?? "";
+  return adminTabTitleByParam[param] ?? null;
+}
+
+function adminTabUrl(tab: string) {
+  const url = new URL(window.location.href);
+  const param = adminTabParamByTitle[tab];
+  if (!param || tab === "Dashboard") {
+    url.searchParams.delete("tab");
+  } else {
+    url.searchParams.set("tab", param);
+  }
+  if (tab !== "Заявки") url.searchParams.delete("event");
+  return url.pathname + url.search + url.hash;
+}
+
+function adminApplicationEventUrl(title?: string) {
+  const url = new URL(window.location.href);
+  if (title) {
+    url.searchParams.set("event", title);
+  } else {
+    url.searchParams.delete("event");
+  }
+  return url.pathname + url.search + url.hash;
 }
 
 function RoleSwitcher({ role, setRole }: { role: UserRole; setRole: (role: UserRole) => void }) {
@@ -630,6 +688,16 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   const typeOptions = useMemo(() => ["Все", ...uniqueFilterValues(selectedApplications.map((item) => item.eventType))], [selectedApplications]);
 
   useEffect(() => {
+    function syncSelectedEvent() {
+      setSelectedEvent(new URLSearchParams(window.location.search).get("event") ?? "");
+    }
+
+    syncSelectedEvent();
+    window.addEventListener("popstate", syncSelectedEvent);
+    return () => window.removeEventListener("popstate", syncSelectedEvent);
+  }, []);
+
+  useEffect(() => {
     getAdminStore({ requireServer: true })
       .then((store) => setExportRecords(store.applicationExports))
       .catch(() => setExportRecords({}));
@@ -722,12 +790,32 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
   }
 
   function openEvent(title: string) {
+    if (title !== selectedEvent) {
+      window.history.pushState(
+        { ...(window.history.state ?? {}), adminApplicationEvent: title },
+        "",
+        adminApplicationEventUrl(title)
+      );
+    }
     setSelectedEvent(title);
     setTypeFilter("Все");
     setClassFilter("Все");
     setStatusFilter("Все");
     setMessage("");
     setGoogleSheetUrl("");
+  }
+
+  function closeEvent() {
+    if (window.history.state?.adminApplicationEvent === selectedEvent) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), adminApplicationEvent: undefined },
+      "",
+      adminApplicationEventUrl()
+    );
+    setSelectedEvent("");
   }
 
   return (
@@ -847,7 +935,7 @@ function ApplicationsTable({ applications, setApplications, eventDrafts }: { app
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-[8px] bg-mist p-4">
             <div>
-              <button type="button" onClick={() => setSelectedEvent("")} className="mb-2 text-sm font-semibold text-apple">Назад к мероприятиям</button>
+              <button type="button" onClick={closeEvent} className="mb-2 text-sm font-semibold text-apple">Назад к мероприятиям</button>
               <h3 className="text-xl font-semibold text-ink">{selectedEvent}</h3>
               <p className="text-sm text-slate-500">{selectedApplications.length} {applicationCountLabel(selectedApplications.length)}</p>
               {selectedGroup ? <ApplicationExportStatus group={selectedGroup} record={exportRecords[selectedEvent]} compact /> : null}

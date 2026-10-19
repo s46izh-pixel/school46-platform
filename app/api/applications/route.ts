@@ -5,6 +5,8 @@ import { deleteMediaObject, isSafeMediaKey, mediaFileUrl } from "@/lib/media-sto
 import type { ApplicationItem, EventItem } from "@/lib/types";
 import { NextResponse } from "next/server";
 
+const duplicateWindowMs = 2 * 60 * 1000;
+
 export async function GET(request: Request) {
   if (!await verifyAdminSession(cookieFromRequest(request, cookieName))) {
     return NextResponse.json({ message: "Нужно войти в админку." }, { status: 401, headers: noStoreHeaders });
@@ -58,9 +60,35 @@ export async function POST(request: Request) {
       files: normalizeFiles(body.files, fileRules, createdAt)
     };
 
-    await mutateAdminStore((current) => ({ applications: [application, ...current.applications] }));
+    let savedApplication = application;
+    let created = false;
+    await mutateAdminStore((current) => {
+      const duplicate = current.applications.find((item) =>
+        item.applicationId === applicationId ||
+        item.id === applicationId ||
+        isRecentDuplicate(item, application)
+      );
+      if (duplicate) {
+        savedApplication = duplicate;
+        return current;
+      }
 
-    return NextResponse.json(application, { status: 201, headers: noStoreHeaders });
+      created = true;
+      return { applications: [application, ...current.applications] };
+    });
+
+    if (!created) {
+      const savedKeys = new Set((savedApplication.files ?? []).map((file) => file.key).filter(Boolean));
+      const redundantKeys = (application.files ?? [])
+        .map((file) => file.key)
+        .filter((key): key is string => Boolean(key) && !savedKeys.has(key));
+      await Promise.allSettled(redundantKeys.map((key) => deleteMediaObject(key)));
+    }
+
+    return NextResponse.json(savedApplication, {
+      status: created ? 201 : 200,
+      headers: noStoreHeaders
+    });
   } catch {
     return NextResponse.json({ message: "Не удалось сохранить заявку." }, { status: 500, headers: noStoreHeaders });
   }
@@ -119,6 +147,43 @@ export async function DELETE(request: Request) {
   } catch {
     return NextResponse.json({ message: "Не удалось удалить заявку." }, { status: 500, headers: noStoreHeaders });
   }
+}
+
+function isRecentDuplicate(existing: ApplicationItem, candidate: ApplicationItem) {
+  const existingCreatedAt = Date.parse(existing.createdAt);
+  if (!Number.isFinite(existingCreatedAt) || Math.abs(Date.now() - existingCreatedAt) > duplicateWindowMs) {
+    return false;
+  }
+  return applicationSignature(existing) === applicationSignature(candidate);
+}
+
+function applicationSignature(application: ApplicationItem) {
+  const fields = [
+    application.eventId || application.eventTitle,
+    application.eventType,
+    application.className,
+    application.student,
+    application.mentor,
+    application.nomination,
+    application.contact,
+    application.workUrl,
+    application.comment,
+    application.consent ? "1" : "0"
+  ].map(normalizeSignaturePart);
+
+  const files = (application.files ?? [])
+    .map((file) => [
+      normalizeSignaturePart(file.name),
+      String(file.size || 0),
+      normalizeSignaturePart(file.type)
+    ].join(":"))
+    .sort();
+
+  return [...fields, ...files].join("|");
+}
+
+function normalizeSignaturePart(value: string) {
+  return value.trim().toLocaleLowerCase("ru-RU").replace(/\s+/g, " ");
 }
 
 function eventTypeValue(value: unknown): EventItem["type"] {

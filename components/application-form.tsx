@@ -6,11 +6,14 @@ import { uploadMediaFile } from "@/lib/media-upload-client";
 import type { ApplicationAttachment, EventItem, ScheduleLesson } from "@/lib/types";
 import { CheckCircle2, Paperclip, Send } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ApplicationForm({ event: selectedEvent }: { event?: EventItem }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const applicationIdRef = useRef("");
   const [classOptions, setClassOptions] = useState(() => uniqueClasses(classes, classes));
   const allowedFiles = parseAllowedFiles(selectedEvent?.allowedFiles);
   const allowFiles = selectedEvent?.allowFiles !== false;
@@ -27,23 +30,34 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
+
+    submittingRef.current = true;
+    setSubmitting(true);
     setError("");
+    const formElement = event.currentTarget;
+
     try {
-      const form = new FormData(event.currentTarget);
+      const form = new FormData(formElement);
       const files = form.getAll("files").filter((item): item is File => item instanceof File && Boolean(item.name));
       const checkedFiles = validateFiles(files, allowedFiles);
       if (!checkedFiles.ok) {
         setError(checkedFiles.message);
         return;
       }
-      const applicationId = crypto.randomUUID();
+
+      const applicationId = applicationIdRef.current || crypto.randomUUID();
+      applicationIdRef.current = applicationId;
       const attachments = await Promise.all(files.map((file) => fileToAttachment(file, allowedFiles, {
         eventId: selectedEvent?.id ?? "",
         applicationId
       })));
       const response = await fetch("/api/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": applicationId
+        },
         body: JSON.stringify({
           ...Object.fromEntries(form.entries()),
           files: attachments,
@@ -60,10 +74,14 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
         setError(data.message || "Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
         return;
       }
+
       setSent(true);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Не удалось отправить заявку. Попробуйте ещё раз или сообщите администратору.");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   }
 
@@ -106,9 +124,14 @@ export function ApplicationForm({ event: selectedEvent }: { event?: EventItem })
         Даю согласие на обработку данных для участия в конкурсе
       </label>
       {error ? <p className="rounded-[8px] bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{error}</p> : null}
-      <button className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 font-semibold text-white">
+      <button
+        type="submit"
+        disabled={submitting}
+        aria-busy={submitting}
+        className="focus-ring flex items-center justify-center gap-2 rounded-[8px] bg-ink px-5 py-3 font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+      >
         <Send size={18} />
-        Отправить заявку
+        {submitting ? "Отправляем заявку..." : "Отправить заявку"}
       </button>
     </form>
   );
